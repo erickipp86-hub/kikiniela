@@ -51,11 +51,8 @@ const INITIAL_GAMES = [
   { id: 23, week: 2, home: 'Rams', away: 'Seahawks', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null }
 ];
 
-const INITIAL_USERS = [
-  { id: '1', name: 'Diego (Tío)', locked: true, picks: { 16: 'Chiefs', 17: '49ers', 18: 'Bills', 19: 'Eagles', 20: 'Lions', 21: 'Bengals', 22: 'Cowboys', 23: 'Seahawks' } },
-  { id: '2', name: 'Mateo (11 años)', locked: false, picks: { 16: 'Chiefs', 17: 'Cowboys', 18: 'Bills' } },
-  { id: '3', name: 'Sofía', locked: true, picks: { 16: 'Ravens', 17: '49ers', 18: 'Dolphins', 19: 'Eagles', 20: 'Packers', 21: 'Bengals', 22: 'Cowboys', 23: 'Seahawks' } }
-];
+const INITIAL_USERS = []; 
+ 
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
