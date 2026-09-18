@@ -74,6 +74,33 @@ export default function App() {
     if (savedLocked) setIsLockedByButton(JSON.parse(savedLocked));
   }, []);
 
+  // Cargar partidos automáticamente desde Google Sheets al iniciar
+  useEffect(() => {
+    const fetchSheetGames = async () => {
+      try {
+        const response = await fetch('https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec');
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const formattedGames = data.map((item, index) => ({
+            id: Number(item.ID) || index + 1,
+            week: item.Semana || '1',
+            home: item.Local,
+            away: item.Visitante,
+            datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
+            status: (item.Estatus || 'upcoming').toLowerCase(),
+            winner: item['Ganador Oficial'] || null
+          }));
+          setGames(formattedGames);
+          localStorage.setItem('kiki_quiniela_games', JSON.stringify(formattedGames));
+        }
+      } catch (e) {
+        console.error("Error al cargar desde Google Sheets:", e);
+      }
+    };
+
+    fetchSheetGames();
+  }, []);
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
@@ -81,43 +108,29 @@ export default function App() {
 
   const fetchLiveNFLData = async () => {
     setIsUpdatingFromAI(true);
-    showToast('🔄 Consultando internet en tiempo real (partidos y resultados NFL)...');
+    showToast('🔄 Sincronizando partidos desde Google Sheets...');
     try {
-      const systemPrompt = "You are an NFL data assistant. Return valid JSON only with the current NFL week games schedule and live/final results. Format required: an array of objects with keys: id (number), home (string team name), away (string team name), datetime (ISO string format YYYY-MM-DDTHH:mm:ss), status ('upcoming' or 'final'), winner (team name string or null if upcoming).";
-      const userQuery = "Get the latest NFL game schedule and scores for the current active week in 2026. Return as JSON.";
-      
-      const apiKey = ""; 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-      const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { responseMimeType: "application/json" }
-      };
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-      const candidate = result.candidates?.[0];
-      if (candidate && candidate.content?.parts?.[0]?.text) {
-        const textData = candidate.content.parts[0].text;
-        const parsedGames = JSON.parse(textData);
-        if (Array.isArray(parsedGames) && parsedGames.length > 0) {
-          setGames(parsedGames);
-          localStorage.setItem('kiki_quiniela_games', JSON.stringify(parsedGames));
-          showToast('✅ ¡Partidos y resultados sincronizados con internet con éxito!');
-        } else {
-          showToast('⚠️ No se pudieron sincronizar nuevos partidos automáticamente.');
-        }
+      const response = await fetch('https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec');
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const formattedGames = data.map((item, index) => ({
+          id: Number(item.ID) || index + 1,
+          week: item.Semana || '1',
+          home: item.Local,
+          away: item.Visitante,
+          datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
+          status: (item.Estatus || 'upcoming').toLowerCase(),
+          winner: item['Ganador Oficial'] || null
+        }));
+        setGames(formattedGames);
+        localStorage.setItem('kiki_quiniela_games', JSON.stringify(formattedGames));
+        showToast('✅ ¡Partidos actualizados desde tu Google Sheets!');
+      } else {
+        showToast('⚠️ No se encontraron partidos en la hoja.');
       }
     } catch (e) {
-      console.error("AI Sync Error:", e);
-      showToast('❌ Error al conectar con internet para actualizar la NFL.');
+      console.error("Sheet Sync Error:", e);
+      showToast('❌ Error al conectar con Google Sheets.');
     } finally {
       setIsUpdatingFromAI(false);
     }
@@ -289,10 +302,10 @@ export default function App() {
               onClick={fetchLiveNFLData}
               disabled={isUpdatingFromAI}
               className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 shadow border border-emerald-400/40 transition active:scale-95"
-              title="Sincronizar partidos y resultados con internet"
+              title="Sincronizar partidos desde Google Sheets"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isUpdatingFromAI ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sincronizar IA</span>
+              <span className="hidden sm:inline">Sincronizar Sheets</span>
             </button>
             <button
               onClick={() => {
@@ -565,7 +578,7 @@ export default function App() {
             <div className="space-y-3">
               {games.filter(g => g.status === 'final').length === 0 ? (
                 <div className="border rounded-2xl p-8 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                  Aún no hay partidos finalizados en esta semana. ¡Vuelve pronto o usa "Sincronizar IA"!
+                  Aún no hay partidos finalizados en esta semana. ¡Vuelve pronto o usa "Sincronizar Sheets"!
                 </div>
               ) : (
                 games.filter(g => g.status === 'final').map(game => {
