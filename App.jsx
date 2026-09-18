@@ -19,33 +19,49 @@ const TEAM_LOGOS = {
   'Steelers': 'https://a.espncdn.com/i/teamlogos/nfl/500/pit.png',
   'Giants': 'https://a.espncdn.com/i/teamlogos/nfl/500/nyg.png',
   'Seahawks': 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png',
-  'Rams': 'https://a.espncdn.com/i/teamlogos/nfl/500/lar.png'
+  'Rams': 'https://a.espncdn.com/i/teamlogos/nfl/500/lar.png',
+  'Saints': 'https://a.espncdn.com/i/teamlogos/nfl/500/no.png',
+  'Buccaneers': 'https://a.espncdn.com/i/teamlogos/nfl/500/tb.png',
+  'Colts': 'https://a.espncdn.com/i/teamlogos/nfl/500/ind.png',
+  'Browns': 'https://a.espncdn.com/i/teamlogos/nfl/500/cle.png',
+  'Jaguars': 'https://a.espncdn.com/i/teamlogos/nfl/500/jax.png',
+  'Titans': 'https://a.espncdn.com/i/teamlogos/nfl/500/ten.png',
+  'Jets': 'https://a.espncdn.com/i/teamlogos/nfl/500/nyj.png',
+  'Texans': 'https://a.espncdn.com/i/teamlogos/nfl/500/hou.png',
+  'Falcons': 'https://a.espncdn.com/i/teamlogos/nfl/500/atl.png',
+  'Panthers': 'https://a.espncdn.com/i/teamlogos/nfl/500/car.png',
+  'Bears': 'https://a.espncdn.com/i/teamlogos/nfl/500/chi.png',
+  'Vikings': 'https://a.espncdn.com/i/teamlogos/nfl/500/min.png',
+  'Raiders': 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png',
+  'Chargers': 'https://a.espncdn.com/i/teamlogos/nfl/500/lac.png',
+  'Cardinals': 'https://a.espncdn.com/i/teamlogos/nfl/500/ari.png',
+  'Broncos': 'https://a.espncdn.com/i/teamlogos/nfl/500/den.png'
 };
 
 const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
 
 const INITIAL_GAMES = [
-  { id: 1, home: 'Chiefs', away: 'Ravens', datetime: '2026-09-20T13:00:00', status: 'final', winner: 'Chiefs' },
-  { id: 2, home: '49ers', away: 'Cowboys', datetime: '2026-09-20T16:25:00', status: 'final', winner: '49ers' },
-  { id: 3, home: 'Bills', away: 'Dolphins', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
-  { id: 4, home: 'Eagles', away: 'Commanders', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
-  { id: 5, home: 'Lions', away: 'Packers', datetime: '2026-09-20T15:05:00', status: 'upcoming', winner: null },
-  { id: 6, home: 'Bengals', away: 'Steelers', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
-  { id: 7, home: 'Cowboys', away: 'Giants', datetime: '2026-09-21T19:15:00', status: 'upcoming', winner: null },
-  { id: 8, home: 'Seahawks', away: 'Rams', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null }
+  { id: 16, week: 2, home: 'Chiefs', away: 'Ravens', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
+  { id: 17, week: 2, home: '49ers', away: 'Cowboys', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null },
+  { id: 18, week: 2, home: 'Bills', away: 'Dolphins', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
+  { id: 19, week: 2, home: 'Commanders', away: 'Eagles', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
+  { id: 20, week: 2, home: 'Lions', away: 'Packers', datetime: '2026-09-20T15:05:00', status: 'upcoming', winner: null },
+  { id: 21, week: 2, home: 'Bengals', away: 'Steelers', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null },
+  { id: 22, week: 2, home: 'Cowboys', away: 'Giants', datetime: '2026-09-21T19:15:00', status: 'upcoming', winner: null },
+  { id: 23, week: 2, home: 'Rams', away: 'Seahawks', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null }
 ];
 
 const INITIAL_USERS = [
-  { id: '1', name: 'Diego (Tío)', locked: true, picks: { 1: 'Chiefs', 2: '49ers', 3: 'Bills', 4: 'Eagles', 5: 'Lions', 6: 'Bengals', 7: 'Cowboys', 8: 'Seahawks' } },
-  { id: '2', name: 'Mateo (11 años)', locked: false, picks: { 1: 'Chiefs', 2: 'Cowboys', 3: 'Bills' } },
-  { id: '3', name: 'Sofía', locked: true, picks: { 1: 'Ravens', 2: '49ers', 3: 'Dolphins', 4: 'Eagles', 5: 'Packers', 6: 'Bengals', 7: 'Cowboys', 8: 'Seahawks' } }
+  { id: '1', name: 'Diego (Tío)', locked: true, picks: { 16: 'Chiefs', 17: '49ers', 18: 'Bills', 19: 'Eagles', 20: 'Lions', 21: 'Bengals', 22: 'Cowboys', 23: 'Seahawks' } },
+  { id: '2', name: 'Mateo (11 años)', locked: false, picks: { 16: 'Chiefs', 17: 'Cowboys', 18: 'Bills' } },
+  { id: '3', name: 'Sofía', locked: true, picks: { 16: 'Ravens', 17: '49ers', 18: 'Dolphins', 19: 'Eagles', 20: 'Packers', 21: 'Bengals', 22: 'Cowboys', 23: 'Seahawks' } }
 ];
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [inputName, setInputName] = useState('');
-  const [activeTab, setActiveTab] = useState('picks'); // 'picks', 'results', 'leaderboard', 'rules'
-  const [picksViewMode, setPicksViewMode] = useState('cards'); // 'cards' or 'quick'
+  const [activeTab, setActiveTab] = useState('picks'); 
+  const [picksViewMode, setPicksViewMode] = useState('cards'); 
   const [games, setGames] = useState(INITIAL_GAMES);
   const [users, setUsers] = useState(INITIAL_USERS);
   const [userPicks, setUserPicks] = useState({});
@@ -74,31 +90,8 @@ export default function App() {
     if (savedLocked) setIsLockedByButton(JSON.parse(savedLocked));
   }, []);
 
-  // Cargar partidos automáticamente desde Google Sheets al iniciar
   useEffect(() => {
-    const fetchSheetGames = async () => {
-      try {
-        const response = await fetch('https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec');
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const formattedGames = data.map((item, index) => ({
-            id: Number(item.ID) || index + 1,
-            week: item.Semana || '1',
-            home: item.Local,
-            away: item.Visitante,
-            datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
-            status: (item.Estatus || 'upcoming').toLowerCase(),
-            winner: item['Ganador Oficial'] || null
-          }));
-          setGames(formattedGames);
-          localStorage.setItem('kiki_quiniela_games', JSON.stringify(formattedGames));
-        }
-      } catch (e) {
-        console.error("Error al cargar desde Google Sheets:", e);
-      }
-    };
-
-    fetchSheetGames();
+    fetchLiveNFLData();
   }, []);
 
   const showToast = (msg) => {
@@ -115,7 +108,7 @@ export default function App() {
       if (Array.isArray(data) && data.length > 0) {
         const formattedGames = data.map((item, index) => ({
           id: Number(item.ID) || index + 1,
-          week: item.Semana || '1',
+          week: item.Semana || '2',
           home: item.Local,
           away: item.Visitante,
           datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
@@ -124,7 +117,7 @@ export default function App() {
         }));
         setGames(formattedGames);
         localStorage.setItem('kiki_quiniela_games', JSON.stringify(formattedGames));
-        showToast('✅ ¡Partidos actualizados desde tu Google Sheets!');
+        showToast('✅ ¡Partidos sincronizados desde Google Sheets!');
       } else {
         showToast('⚠️ No se encontraron partidos en la hoja.');
       }
@@ -157,7 +150,6 @@ export default function App() {
     showToast(`¡Bienvenido a Kiki Niela NFL, ${name}! 🏈`);
   };
 
-  // Earliest game per calendar day
   const earliestGamePerDay = games.reduce((acc, game) => {
     const dateKey = game.datetime.split('T')[0];
     const gameTime = new Date(game.datetime).getTime();
@@ -167,7 +159,6 @@ export default function App() {
     return acc;
   }, {});
 
-  // 12 hours before the earliest game of that specific day
   const isDayLocked = (gameDatetime) => {
     const dateKey = gameDatetime.split('T')[0];
     const earliestTime = earliestGamePerDay[dateKey];
@@ -272,6 +263,9 @@ export default function App() {
     );
   }
 
+  // Filtrar solo los partidos de la semana actual o próxima para los picks (por ejemplo, Semana 2)
+  const upcomingGamesForPicks = games.filter(g => String(g.week) === '2');
+
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
       {toast && (
@@ -305,7 +299,7 @@ export default function App() {
               title="Sincronizar partidos desde Google Sheets"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isUpdatingFromAI ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sincronizar Sheets</span>
+              <span className="hidden sm:inline">Actualizar</span>
             </button>
             <button
               onClick={() => {
@@ -373,7 +367,7 @@ export default function App() {
                     </span>
                   ) : (
                     <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-3 py-1 rounded-full border border-amber-500/30">
-                      <Unlock className="w-3.5 h-3.5" /> Picks Abiertos
+                      <Unlock className="w-3.5 h-3.5" /> Picks Abiertos (Semana 2)
                     </span>
                   )}
                 </div>
@@ -409,7 +403,7 @@ export default function App() {
             {/* VIEW MODE 1: CARDS */}
             {picksViewMode === 'cards' && (
               <div className="space-y-3">
-                {games.map((game) => {
+                {upcomingGamesForPicks.map((game) => {
                   const selectedTeam = userPicks[game.id];
                   const isFinal = game.status === 'final';
                   const dayLocked = isDayLocked(game.datetime);
@@ -498,11 +492,11 @@ export default function App() {
               <div className="space-y-2">
                 <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-lg">
                   <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                    <span>⚡ Vista Rápida</span>
-                    <span>{Object.keys(userPicks).length} / {games.length} elegidos</span>
+                    <span>⚡ Vista Rápida (Semana 2)</span>
+                    <span>{Object.keys(userPicks).filter(id => upcomingGamesForPicks.some(g => g.id === Number(id))).length} / {upcomingGamesForPicks.length} elegidos</span>
                   </div>
                   <div className="space-y-2">
-                    {games.map((game) => {
+                    {upcomingGamesForPicks.map((game) => {
                       const selectedTeam = userPicks[game.id];
                       const isFinal = game.status === 'final';
                       const dayLocked = isDayLocked(game.datetime);
@@ -582,7 +576,7 @@ export default function App() {
           <div className="space-y-4">
             <div className="border rounded-2xl p-4 text-center shadow-lg" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
               <h2 className="font-black text-amber-300 text-lg mb-1 flex items-center justify-center gap-2">
-                <Check className="w-6 h-6 text-emerald-400" /> Resultados Históricos
+                <Check className="w-6 h-6 text-emerald-400" /> Resultados Históricos (Semana 1)
               </h2>
               <p className="text-xs text-slate-200">Historial de partidos finalizados y tus aciertos.</p>
             </div>
@@ -590,7 +584,7 @@ export default function App() {
             <div className="space-y-3">
               {games.filter(g => g.status === 'final').length === 0 ? (
                 <div className="border rounded-2xl p-8 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                  Aún no hay partidos finalizados en esta semana. ¡Vuelve pronto o usa "Sincronizar Sheets"!
+                  Aún no hay partidos finalizados. ¡Usa "Actualizar"!
                 </div>
               ) : (
                 games.filter(g => g.status === 'final').map(game => {
@@ -602,7 +596,7 @@ export default function App() {
                     <div key={game.id} className="border rounded-2xl p-4 shadow-lg space-y-3" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
                       <div className="flex justify-between items-center text-xs text-slate-300 font-semibold">
                         <span className="bg-[#002855] px-2.5 py-1 rounded-full text-slate-200">
-                          {new Date(game.datetime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                          Semana {game.week} - {new Date(game.datetime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                         </span>
                         <span className="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-emerald-500/30">
                           ✅ Ganador: {game.winner}
@@ -769,7 +763,7 @@ export default function App() {
                 <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
                   <span>🔒</span> 3. Cierre Automático por Día (-12 hrs)
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed">
+                <p className="text-xs text-slate-200 leading-regular">
                   Si no enviaste tus picks antes, cada bloque de partidos se cierra automáticamente exactamente <span className="font-bold text-amber-300">12 horas antes</span> de que inicie el primer partido de esa fecha específica.
                 </p>
               </div>
