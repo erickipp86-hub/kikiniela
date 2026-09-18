@@ -493,7 +493,7 @@ export default function App() {
               </div>
             )}
 
-            {/* VIEW MODE 2: QUICK FILL */}
+            {/* VIEW MODE 2: QUICK FILL (Con minilogos integrados) */}
             {picksViewMode === 'quick' && (
               <div className="space-y-2">
                 <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-lg">
@@ -518,24 +518,36 @@ export default function App() {
                             <button
                               disabled={isLocked}
                               onClick={() => handlePick(game.id, game.away, game.datetime)}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                              className={`py-2 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
                                 selectedTeam === game.away
                                   ? 'bg-[#D50A0A] text-white shadow-md ring-1 ring-white'
                                   : 'bg-[#001b3a] text-slate-300 hover:bg-[#001b3a]/80 border border-white/10'
                               } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
+                              <img 
+                                src={TEAM_LOGOS[game.away]} 
+                                alt={game.away} 
+                                className="w-5 h-5 object-contain shrink-0 drop-shadow" 
+                                onError={(e)=>{e.target.style.display='none'}}
+                              />
                               <span className="truncate">{game.away}</span>
                             </button>
 
                             <button
                               disabled={isLocked}
                               onClick={() => handlePick(game.id, game.home, game.datetime)}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                              className={`py-2 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
                                 selectedTeam === game.home
                                   ? 'bg-[#D50A0A] text-white shadow-md ring-1 ring-white'
                                   : 'bg-[#001b3a] text-slate-300 hover:bg-[#001b3a]/80 border border-white/10'
                               } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
+                              <img 
+                                src={TEAM_LOGOS[game.home]} 
+                                alt={game.home} 
+                                className="w-5 h-5 object-contain shrink-0 drop-shadow" 
+                                onError={(e)=>{e.target.style.display='none'}}
+                              />
                               <span className="truncate">{game.home}</span>
                             </button>
                           </div>
