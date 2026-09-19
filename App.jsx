@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award, Menu
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -55,6 +55,7 @@ export default function App() {
   const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
+  const [showConfigMenu, setShowConfigMenu] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -135,19 +136,14 @@ export default function App() {
     setLoginError('');
     const name = inputName.trim();
 
-    // Validar si el nombre ya existe en la base de datos global
     const existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
-    
-    // Si ya existe y este dispositivo no es el dueño guardado localmente, bloquear
     const localSaved = localStorage.getItem('kiki_quiniela_user');
+
     if (existing && localSaved && localSaved.toLowerCase() !== name.toLowerCase()) {
       setLoginError('Este nombre ya está registrado por otro usuario. Elige uno diferente.');
       return;
     }
 
-    // Si el nombre ya existe en la hoja pero nadie lo tiene en este navegador, 
-    // evitamos que alguien más lo robe exigiendo que si es suyo, use su dispositivo, 
-    // o bien si la hoja está limpia (primer registro), lo acepta.
     if (existing && !localSaved) {
       setLoginError('Este nombre ya está en uso. Si eres tú, usa tu dispositivo original o elige otro.');
       return;
@@ -216,7 +212,6 @@ export default function App() {
     return score;
   };
 
-  // Pantalla de Inicio (Solo Nombre, sin NIP)
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
@@ -284,13 +279,29 @@ export default function App() {
               <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
             </div>
           </div>
-          <div>
+          
+          <div className="relative">
             <button
-              onClick={() => fetchAllDataSilent()}
-              className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl border border-white/20 transition text-xs font-bold text-slate-200"
+              onClick={() => setShowConfigMenu(!showConfigMenu)}
+              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl border border-white/20 transition flex items-center justify-center text-white"
+              title="Menú"
             >
-              🔄 Sincronizar
+              <Menu className="w-5 h-5" />
             </button>
+
+            {showConfigMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
+                <button
+                  onClick={() => {
+                    fetchAllDataSilent();
+                    setShowConfigMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold"
+                >
+                  🔄 Sincronizar datos
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
