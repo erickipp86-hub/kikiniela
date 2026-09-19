@@ -195,6 +195,7 @@ export default function App() {
     return score;
   };
 
+  // Pantalla de Inicio Integrada con el botón exacto "¡Que juegue!"
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
@@ -204,12 +205,12 @@ export default function App() {
             <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white">Kiki Niela NFL</h1>
-          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">la casa de las apuestas</p>
+          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">LA CASA DE LAS APUESTAS</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="text"
-              placeholder="Escribe tu NickName"
+              placeholder="Tu nombre..."
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
               className="w-full bg-[#002855] border-2 rounded-2xl px-5 py-3.5 text-base text-white placeholder-slate-400 focus:outline-none transition-all text-center font-bold shadow-inner"
@@ -222,7 +223,7 @@ export default function App() {
               className="w-full text-white font-black py-3.5 rounded-2xl text-base shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-2"
               style={{ backgroundColor: '#D50A0A' }}
             >
-              ¡Entrar a la Quiniela! <ChevronRight className="w-5 h-5" />
+              ¡Que juegue!
             </button>
           </form>
         </div>
@@ -246,7 +247,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-black text-lg tracking-tight text-white leading-tight">Kiki Niela NFL</h1>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">la casa de las apuestas</p>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">LA CASA DE LAS APUESTAS</p>
               <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
             </div>
           </div>
