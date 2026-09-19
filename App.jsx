@@ -1,129 +1,228 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Trophy, Calendar, ListChecks, Shield, RefreshCw, 
-  CheckCircle2, Lock, ChevronRight, User, AlertCircle, Menu, X
+  Trophy, Calendar, BookOpen,
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award
 } from 'lucide-react';
 
-export default function QuinielaApp() {
-  const [tabActiva, setTabActiva] = useState('partidos');
-  const [partidos, setPartidos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorConexion, setErrorConexion] = useState(false);
-  
-  // Manejo de usuario y menú de configuración
-  const [usuarioActual, setUsuarioActual] = useState(localStorage.getItem('quiniela_user') || '');
-  const [tempUsuario, setTempUsuario] = useState('');
-  const [showConfigMenu, setShowConfigMenu] = useState(false);
-  
-  const [picks, setPicks] = useState({}); // { idPartido: 'Equipo Elegido' }
-  const [misPicksGuardados, setMisPicksGuardados] = useState({});
-  const [usersList, setUsersList] = useState([]);
+const TEAM_LOGOS = {
+  'Chiefs': 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png',
+  'Ravens': 'https://a.espncdn.com/i/teamlogos/nfl/500/bal.png',
+  '49ers': 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png',
+  'Cowboys': 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png',
+  'Bills': 'https://a.espncdn.com/i/teamlogos/nfl/500/buf.png',
+  'Dolphins': 'https://a.espncdn.com/i/teamlogos/nfl/500/mia.png',
+  'Eagles': 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png',
+  'Commanders': 'https://a.espncdn.com/i/teamlogos/nfl/500/wsh.png',
+  'Lions': 'https://a.espncdn.com/i/teamlogos/nfl/500/det.png',
+  'Packers': 'https://a.espncdn.com/i/teamlogos/nfl/500/gb.png',
+  'Bengals': 'https://a.espncdn.com/i/teamlogos/nfl/500/cin.png',
+  'Steelers': 'https://a.espncdn.com/i/teamlogos/nfl/500/pit.png',
+  'Giants': 'https://a.espncdn.com/i/teamlogos/nfl/500/nyg.png',
+  'Seahawks': 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png',
+  'Rams': 'https://a.espncdn.com/i/teamlogos/nfl/500/lar.png',
+  'Saints': 'https://a.espncdn.com/i/teamlogos/nfl/500/no.png',
+  'Buccaneers': 'https://a.espncdn.com/i/teamlogos/nfl/500/tb.png',
+  'Colts': 'https://a.espncdn.com/i/teamlogos/nfl/500/ind.png',
+  'Browns': 'https://a.espncdn.com/i/teamlogos/nfl/500/cle.png',
+  'Jaguars': 'https://a.espncdn.com/i/teamlogos/nfl/500/jax.png',
+  'Titans': 'https://a.espncdn.com/i/teamlogos/nfl/500/ten.png',
+  'Jets': 'https://a.espncdn.com/i/teamlogos/nfl/500/nyj.png',
+  'Texans': 'https://a.espncdn.com/i/teamlogos/nfl/500/hou.png',
+  'Falcons': 'https://a.espncdn.com/i/teamlogos/nfl/500/atl.png',
+  'Panthers': 'https://a.espncdn.com/i/teamlogos/nfl/500/car.png',
+  'Bears': 'https://a.espncdn.com/i/teamlogos/nfl/500/chi.png',
+  'Vikings': 'https://a.espncdn.com/i/teamlogos/nfl/500/min.png',
+  'Raiders': 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png',
+  'Chargers': 'https://a.espncdn.com/i/teamlogos/nfl/500/lac.png',
+  'Cardinals': 'https://a.espncdn.com/i/teamlogos/nfl/500/ari.png',
+  'Broncos': 'https://a.espncdn.com/i/teamlogos/nfl/500/den.png'
+};
 
-  // URL de tu Google Apps Script
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
+const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
 
-  // Cargar partidos y usuarios desde Google Sheets
-  const cargarDatos = async () => {
-    setLoading(true);
-    setErrorConexion(false);
-    try {
-      // Cargar partidos
-      const responsePartidos = await fetch(GOOGLE_SCRIPT_URL);
-      const dataPartidos = await responsePartidos.json();
-      if (Array.isArray(dataPartidos)) {
-        setPartidos(dataPartidos);
-      } else {
-        setErrorConexion(true);
-      }
+const INITIAL_GAMES = [
+  { id: 16, week: 2, home: 'Chiefs', away: 'Ravens', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 17, week: 2, home: '49ers', away: 'Cowboys', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 18, week: 2, home: 'Bills', away: 'Dolphins', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 19, week: 2, home: 'Commanders', away: 'Eagles', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 20, week: 2, home: 'Lions', away: 'Packers', datetime: '2026-09-20T15:05:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 21, week: 2, home: 'Bengals', away: 'Steelers', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 22, week: 2, home: 'Cowboys', away: 'Giants', datetime: '2026-09-21T19:15:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
+  { id: 23, week: 2, home: 'Rams', away: 'Seahawks', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' }
+];
 
-      // Cargar usuarios para persistencia
-      const responseUsers = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
-      const dataUsers = await responseUsers.json();
-      if (Array.isArray(dataUsers)) {
-        setUsersList(dataUsers);
-        const encontrado = dataUsers.find(u => u.Name === usuarioActual);
-        if (encontrado && encontrado.Picks) {
-          setMisPicksGuardados(encontrado.Picks);
-          setPicks(encontrado.Picks);
-        }
-      }
-    } catch (error) {
-      console.error("Error al conectar con Google Sheets:", error);
-      setErrorConexion(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [inputName, setInputName] = useState('');
+  const [activeTab, setActiveTab] = useState('picks'); 
+  const [picksViewMode, setPicksViewMode] = useState('cards'); 
+  const [games, setGames] = useState(INITIAL_GAMES);
+  const [users, setUsers] = useState([]);
+  const [userPicks, setUserPicks] = useState({});
+  const [isLockedByButton, setIsLockedByButton] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
 
   useEffect(() => {
-    cargarDatos();
+    const timer = setInterval(() => setCurrentTime(new Date()), 10000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!tempUsuario.trim()) return;
-    const nombre = tempUsuario.trim();
-    setUsuarioActual(nombre);
-    localStorage.setItem('quiniela_user', nombre);
-    
-    const encontrado = usersList.find(u => u.Name === nombre);
-    if (encontrado && encontrado.Picks) {
-      setMisPicksGuardados(encontrado.Picks);
-      setPicks(encontrado.Picks);
-    } else {
-      setPicks({});
-      setMisPicksGuardados({});
-    }
-    setTempUsuario('');
-  };
+  useEffect(() => {
+    const savedUser = localStorage.getItem('kiki_quiniela_user');
+    if (savedUser) setCurrentUser(savedUser);
+    fetchAllDataSilent();
+  }, []);
 
-  const handleSeleccionPick = (partidoId, equipo) => {
-    setPicks({
-      ...picks,
-      [partidoId]: equipo
-    });
-  };
-
-  const guardarPicks = async () => {
-    const nuevosPicks = { ...misPicksGuardados, ...picks };
-    setMisPicksGuardados(nuevosPicks);
-    
-    // Guardar en Google Sheets para que persista y se detecte el usuario independiente
+  const fetchAllDataSilent = async () => {
     try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: usuarioActual, locked: false, picks: nuevosPicks })
-      });
-      alert("¡Pronósticos guardados con éxito en Google Sheets!");
-    } catch (err) {
-      console.error("Error al guardar en sheets", err);
-      alert("¡Pronósticos guardados localmente!");
+      const resGames = await fetch(SCRIPT_URL);
+      const dataGames = await resGames.json();
+      if (Array.isArray(dataGames) && dataGames.length > 0) {
+        const formattedGames = dataGames.map((item, index) => ({
+          id: Number(item.ID) || index + 1,
+          week: item.Semana || '2',
+          home: item.Local,
+          away: item.Visitante,
+          datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
+          status: (item.Estatus || 'upcoming').toLowerCase(),
+          winner: item['Ganador Oficial'] || null,
+          scoreHome: item['Marcador Local'] || '',
+          scoreAway: item['Marcador Visitante'] || ''
+        }));
+        setGames(formattedGames);
+      }
+
+      const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
+      const dataUsers = await resUsers.json();
+      if (Array.isArray(dataUsers)) {
+        const formattedUsers = dataUsers
+          .filter(u => (u.Nombre || u.name))
+          .map((u, idx) => ({
+            id: String(idx + 1),
+            name: u.Nombre || u.name,
+            locked: String(u.Locked).toUpperCase() === 'TRUE' || u.locked === true,
+            picks: u.Picks || u.picks || {}
+          }));
+        setUsers(formattedUsers);
+
+        const savedUser = localStorage.getItem('kiki_quiniela_user');
+        if (savedUser) {
+          const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
+          if (found) {
+            setUserPicks(found.picks || {});
+            setIsLockedByButton(found.locked || false);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Silent Sync Error:", e);
     }
   };
 
-  // Pantalla de Bienvenida Original con el botón "¡Que juegue!"
-  if (!usuarioActual) {
+  const syncUserToSheet = async (name, locked, picks) => {
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ name, locked, picks })
+      });
+    } catch (e) {
+      console.error("Error saving to sheet:", e);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!inputName.trim()) return;
+    const name = inputName.trim();
+    setCurrentUser(name);
+    localStorage.setItem('kiki_quiniela_user', name);
+
+    let existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+    if (!existing) {
+      const newUser = { id: Date.now().toString(), name, locked: false, picks: {} };
+      setUsers([...users, newUser]);
+      await syncUserToSheet(name, false, {});
+    } else {
+      setUserPicks(existing.picks || {});
+      setIsLockedByButton(existing.locked || false);
+    }
+    fetchAllDataSilent();
+  };
+
+  const earliestGamePerDay = games.reduce((acc, game) => {
+    const dateKey = game.datetime.split('T')[0];
+    const gameTime = new Date(game.datetime).getTime();
+    if (!acc[dateKey] || gameTime < acc[dateKey]) {
+      acc[dateKey] = gameTime;
+    }
+    return acc;
+  }, {});
+
+  const isDayLocked = (gameDatetime) => {
+    const dateKey = gameDatetime.split('T')[0];
+    const earliestTime = earliestGamePerDay[dateKey];
+    if (!earliestTime) return false;
+    const diffHours = (earliestTime - currentTime.getTime()) / (1000 * 60 * 60);
+    return diffHours < 12;
+  };
+
+  const handlePick = async (gameId, team, gameDatetime) => {
+    if (isLockedByButton) return;
+    if (isDayLocked(gameDatetime)) return;
+
+    const updatedPicks = { ...userPicks, [gameId]: team };
+    setUserPicks(updatedPicks);
+    setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
+    await syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
+  };
+
+  const lockAndSubmitPicks = async () => {
+    if (Object.keys(userPicks).length === 0) return;
+    setIsLockedByButton(true);
+    setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
+    await syncUserToSheet(currentUser, true, userPicks);
+  };
+
+  const calculateScore = (user) => {
+    let score = 0;
+    games.forEach(game => {
+      if (game.status === 'final' && game.winner && user.picks && user.picks[game.id] === game.winner) {
+        score += 1;
+      }
+    });
+    return score;
+  };
+
+  if (!currentUser) {
     return (
-      <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-900 text-slate-100 font-sans shadow-2xl overflow-hidden border-x border-slate-800 items-center justify-center p-4">
-        <div className="bg-slate-800 border border-red-600/50 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-4">
-          <h1 className="text-3xl font-bold text-white">Kiki Niela NFL</h1>
-          <p className="text-amber-400 text-xs tracking-widest uppercase font-semibold">LA CASA DE LAS APUESTAS</p>
-          
-          <form onSubmit={handleLogin} className="space-y-4 pt-2">
-            <input 
-              type="text" 
-              placeholder="Tu nombre..." 
-              value={tempUsuario}
-              onChange={(e) => setTempUsuario(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-600 text-sm"
+      <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
+        <div className="max-w-md w-full rounded-3xl p-8 border-2 shadow-2xl text-center relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+          <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: '#D50A0A' }}></div>
+          <div className="w-20 h-20 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner mb-4 border border-white/20">
+            <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white">Kiki Niela NFL</h1>
+          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">la casa de las apuestas</p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="text"
+              placeholder="Escribe tu NickName"
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+              className="w-full bg-[#002855] border-2 rounded-2xl px-5 py-3.5 text-base text-white placeholder-slate-400 focus:outline-none transition-all text-center font-bold shadow-inner"
+              style={{ borderColor: '#D50A0A' }}
+              maxLength={20}
+              required
             />
-            <button 
+            <button
               type="submit"
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl transition shadow-lg shadow-red-600/30 text-sm"
+              className="w-full text-white font-black py-3.5 rounded-2xl text-base shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#D50A0A' }}
             >
-              ¡Que juegue!
+              ¡Entrar a la Quiniela! <ChevronRight className="w-5 h-5" />
             </button>
           </form>
         </div>
@@ -131,238 +230,392 @@ export default function QuinielaApp() {
     );
   }
 
+  // Filtrar Semana 2 y ordenarlos cronológicamente por horario
+  const upcomingGamesForPicks = games
+    .filter(g => String(g.week) === '2')
+    .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-900 text-slate-100 font-sans shadow-2xl overflow-hidden border-x border-slate-800 relative">
-      
-      {/* Header móvil con menú de 3 líneas */}
-      <header className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between relative">
-        <div className="flex items-center space-x-2">
-          <div className="bg-amber-500 p-1.5 rounded-lg text-slate-950 font-black text-sm tracking-wider">
-            NFL
+    <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
+      {/* Header */}
+      <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center p-2 shadow border border-white/20">
+              <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="font-black text-lg tracking-tight text-white leading-tight">Kiki Niela NFL</h1>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">la casa de las apuestas</p>
+              <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
+            </div>
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight text-white">Kikiniela</h1>
-            <p className="text-xs text-slate-400">{usuarioActual}</p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('kiki_quiniela_user');
+                setCurrentUser(null);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-xs px-3 py-1.5 rounded-xl border border-white/20 font-semibold transition"
+            >
+              Cambiar
+            </button>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button 
-            onClick={cargarDatos} 
-            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-300 transition"
-            title="Actualizar datos"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin text-amber-400" : ""} />
-          </button>
-          
-          {/* Botón de configuración con 3 líneas */}
-          <button 
-            onClick={() => setShowConfigMenu(!showConfigMenu)}
-            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-300 transition"
-            title="Configuración"
-          >
-            <Menu size={18} />
-          </button>
         </div>
 
-        {/* Menú Desplegable de Configuración */}
-        {showConfigMenu && (
-          <div className="absolute right-4 top-14 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
-            <button 
-              onClick={() => {
-                setUsuarioActual('');
-                localStorage.removeItem('quiniela_user');
-                setShowConfigMenu(false);
-              }}
-              className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-slate-700/50 transition font-medium flex items-center space-x-2"
-            >
-              <span>Cambiar de usuario</span>
-            </button>
-            <button 
-              onClick={() => {
-                cargarDatos();
-                setShowConfigMenu(false);
-              }}
-              className="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-700/50 transition font-medium flex items-center space-x-2"
-            >
-              <span>Sincronizar datos</span>
-            </button>
-          </div>
-        )}
+        {/* Navigation Tabs */}
+        <div className="grid grid-cols-4 gap-1 bg-[#002855] p-1 rounded-xl border border-white/20 shadow-inner">
+          <button
+            onClick={() => setActiveTab('picks')}
+            className={`py-1.5 rounded-lg text-[11px] font-black flex flex-col items-center justify-center gap-0.5 transition-all ${activeTab === 'picks' ? 'text-white shadow' : 'text-slate-300 hover:text-white'}`}
+            style={{ backgroundColor: activeTab === 'picks' ? '#D50A0A' : 'transparent' }}
+          >
+            <Calendar className="w-3.5 h-3.5" /> Partidos
+          </button>
+          <button
+            onClick={() => setActiveTab('results')}
+            className={`py-1.5 rounded-lg text-[11px] font-black flex flex-col items-center justify-center gap-0.5 transition-all ${activeTab === 'results' ? 'text-white shadow' : 'text-slate-300 hover:text-white'}`}
+            style={{ backgroundColor: activeTab === 'results' ? '#D50A0A' : 'transparent' }}
+          >
+            <Check className="w-3.5 h-3.5" /> Resultados
+          </button>
+          <button
+            onClick={() => setActiveTab('leaderboard')}
+            className={`py-1.5 rounded-lg text-[11px] font-black flex flex-col items-center justify-center gap-0.5 transition-all ${activeTab === 'leaderboard' ? 'text-white shadow' : 'text-slate-300 hover:text-white'}`}
+            style={{ backgroundColor: activeTab === 'leaderboard' ? '#D50A0A' : 'transparent' }}
+          >
+            <Trophy className="w-3.5 h-3.5" /> Tabla
+          </button>
+          <button
+            onClick={() => setActiveTab('rules')}
+            className={`py-1.5 rounded-lg text-[11px] font-black flex flex-col items-center justify-center gap-0.5 transition-all ${activeTab === 'rules' ? 'text-white shadow' : 'text-slate-300 hover:text-white'}`}
+            style={{ backgroundColor: activeTab === 'rules' ? '#D50A0A' : 'transparent' }}
+          >
+            <BookOpen className="w-3.5 h-3.5" /> Reglas
+          </button>
+        </div>
       </header>
 
-      {/* Contenido principal según la pestaña */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24 bg-slate-900">
-        
-        {/* TAB: PARTIDOS */}
-        {tabActiva === 'partidos' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Jornada Activa</h2>
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
-                En vivo desde Sheets
-              </span>
+      {/* Main Content Area */}
+      <main className="max-w-md mx-auto p-3 mt-1">
+        {activeTab === 'picks' && (
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  {isLockedByButton ? (
+                    <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
+                      <Lock className="w-3 h-3" /> Picks Enviados
+                    </span>
+                  ) : (
+                    <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                      <Unlock className="w-3 h-3" /> Semana 2 Abierta
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex bg-[#002855] p-0.5 rounded-lg border border-white/20">
+                  <button
+                    onClick={() => setPicksViewMode('cards')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition ${picksViewMode === 'cards' ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300'}`}
+                  >
+                    <Grid className="w-3 h-3" /> Tarjetas
+                  </button>
+                  <button
+                    onClick={() => setPicksViewMode('quick')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition ${picksViewMode === 'quick' ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300'}`}
+                  >
+                    <span>⚡ Rápida</span>
+                  </button>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {loading && partidos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                <RefreshCw className="animate-spin text-amber-500" size={32} />
-                <p className="text-sm text-slate-400">Cargando partidos de la NFL...</p>
+            {/* Tarjetas de Partidos Ordenadas */}
+            {picksViewMode === 'cards' && (
+              <div className="space-y-2.5">
+                {upcomingGamesForPicks.map((game) => {
+                  const selectedTeam = userPicks[game.id];
+                  const isFinal = game.status === 'final';
+                  const dayLocked = isDayLocked(game.datetime);
+                  const isLocked = isLockedByButton || dayLocked || isFinal;
+
+                  return (
+                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                      <div className="grid grid-cols-2 gap-2.5 items-center">
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.away, game.datetime)}
+                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                            selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
+                          {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
+                        </button>
+
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.home, game.datetime)}
+                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                            selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
+                          {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
+                        <span className="text-slate-300 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                          className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                          <MinusCircle className="w-3 h-3" />
+                          <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
+                        </button>
+
+                        {isFinal ? (
+                          <span className="text-emerald-300 font-bold">Finalizado</span>
+                        ) : dayLocked ? (
+                          <span className="text-red-300 font-bold">Cerrado</span>
+                        ) : (
+                          <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ) : errorConexion ? (
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-center space-y-2">
-                <AlertCircle className="mx-auto text-red-400" size={28} />
-                <p className="text-sm font-medium text-red-200">No se pudieron cargar los datos de Google Sheets.</p>
-                <button 
-                  onClick={cargarDatos}
-                  className="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-semibold transition"
+            )}
+
+            {/* Vista Rápida Ordenada */}
+            {picksViewMode === 'quick' && (
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
+                <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
+                  <span>⚡ Vista Rápida (Semana 2)</span>
+                  <span>{Object.keys(userPicks).length} / {upcomingGamesForPicks.length} elegidos</span>
+                </div>
+                {upcomingGamesForPicks.map((game) => {
+                  const selectedTeam = userPicks[game.id];
+                  const isFinal = game.status === 'final';
+                  const dayLocked = isDayLocked(game.datetime);
+                  const isLocked = isLockedByButton || dayLocked || isFinal;
+
+                  return (
+                    <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-slate-300">
+                        <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
+                        >
+                          Empate {selectedTeam === 'Empate' && '✓'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.away, game.datetime)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                        >
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.away}</span>
+                        </button>
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.home, game.datetime)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                        >
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.home}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!isLockedByButton && (
+              <div className="pt-2 pb-4">
+                <button
+                  onClick={lockAndSubmitPicks}
+                  className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
+                  style={{ backgroundColor: '#D50A0A' }}
                 >
-                  Reintentar conexión
+                  Enviar Mis Picks 🔒
                 </button>
               </div>
-            ) : (
-              partidos.map((partido) => {
-                const isFinalizado = partido.Estatus === 'Finalizado' || partido.Estatus === 'final';
-                const seleccionActual = picks[partido.ID] || misPicksGuardados[partido.ID];
-
-                return (
-                  <div key={partido.ID} className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-md space-y-3">
-                    <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-700/50 pb-2">
-                      <span className="font-medium text-amber-400">Semana {partido.Semana}</span>
-                      <span>{partido['Fecha / Hora']}</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Local */}
-                      <button 
-                        onClick={() => !isFinalizado && handleSeleccionPick(partido.ID, partido.Local)}
-                        disabled={isFinalizado}
-                        className={`p-3 rounded-xl border flex flex-col items-center justify-center transition relative ${
-                          seleccionActual === partido.Local 
-                            ? 'bg-amber-500/20 border-amber-500 text-white font-bold' 
-                            : 'bg-slate-900/50 border-slate-700 text-slate-300 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="text-xs text-slate-400 mb-1">Local</span>
-                        <span className="text-sm text-center leading-tight">{partido.Local}</span>
-                        {isFinalizado && partido['Ganador Oficial'] === partido.Local && (
-                          <span className="absolute top-2 right-2 text-emerald-400 text-xs">✓ Ganó</span>
-                        )}
-                      </button>
-
-                      {/* Visitante */}
-                      <button 
-                        onClick={() => !isFinalizado && handleSeleccionPick(partido.ID, partido.Visitante)}
-                        disabled={isFinalizado}
-                        className={`p-3 rounded-xl border flex flex-col items-center justify-center transition relative ${
-                          seleccionActual === partido.Visitante 
-                            ? 'bg-amber-500/20 border-amber-500 text-white font-bold' 
-                            : 'bg-slate-900/50 border-slate-700 text-slate-300 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="text-xs text-slate-400 mb-1">Visitante</span>
-                        <span className="text-sm text-center leading-tight">{partido.Visitante}</span>
-                        {isFinalizado && partido['Ganador Oficial'] === partido.Visitante && (
-                          <span className="absolute top-2 right-2 text-emerald-400 text-xs">✓ Ganó</span>
-                        )}
-                      </button>
-                    </div>
-
-                    {isFinalizado ? (
-                      <div className="text-center text-xs bg-slate-900/80 py-1.5 rounded-lg text-slate-400 font-medium">
-                        Marcador final: <span className="text-white font-bold">{partido['Marcador Local']} - {partido['Marcador Visitante']}</span> ({partido.Estatus})
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs text-amber-400/90 font-medium">
-                        {seleccionActual ? `Tu pronóstico: ${seleccionActual}` : 'Selecciona tu ganador'}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-
-            {!loading && partidos.length > 0 && (
-              <button 
-                onClick={guardarPicks}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 mt-4"
-              >
-                <CheckCircle2 size={18} />
-                <span>Guardar Pronósticos</span>
-              </button>
             )}
           </div>
         )}
 
-        {/* TAB: PRONÓSTICOS */}
-        {tabActiva === 'pronosticos' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Pronósticos del Grupo</h2>
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 text-center space-y-2">
-              <Lock className="mx-auto text-amber-400" size={28} />
-              <p className="text-sm font-medium text-white">Se desvelan al iniciar cada juego</p>
-              <p className="text-xs text-slate-400">Aquí podrás ver qué eligieron tus amigos una vez que cierren las quinielas de la semana.</p>
+        {/* Resultados */}
+        {activeTab === 'results' && (
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5">Resultados Históricos (Semana 1)</h2>
+              <p className="text-[11px] text-slate-300">Marcadores finales y tus aciertos.</p>
+            </div>
+
+            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
+              {games.filter(g => g.status === 'final').length === 0 ? (
+                <div className="text-center text-slate-400 text-xs py-6">
+                  Aún no hay partidos finalizados registrados en la hoja.
+                </div>
+              ) : (
+                games.filter(g => g.status === 'final').map(game => {
+                  const selectedTeam = userPicks[game.id];
+                  const userGotItRight = selectedTeam && selectedTeam === game.winner;
+
+                  return (
+                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        {userGotItRight ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-bold text-white text-xs">{game.away} vs {game.home}</p>
+                          <p className="text-[10px] text-slate-300">Ganador: <span className="text-amber-300 font-bold">{game.winner}</span> {game.scoreAway !== '' && `(${game.scoreAway}-${game.scoreHome})`}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${userGotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'}`}>
+                          {userGotItRight ? '+1 pt' : '0 pt'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
 
-        {/* TAB: TABLA */}
-        {tabActiva === 'tabla' && (
+        {/* Tabla */}
+        {activeTab === 'leaderboard' && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Tabla General</h2>
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-md">
-              <div className="grid grid-cols-12 bg-slate-900/60 p-3 text-xs font-semibold text-slate-400 border-b border-slate-700">
-                <span className="col-span-2 text-center">#</span>
-                <span className="col-span-7">Participante</span>
-                <span className="col-span-3 text-center">Pts</span>
-              </div>
-              <div className="divide-y divide-slate-700/50">
-                {usersList.length > 0 ? (
-                  usersList.map((u, idx) => (
-                    <div key={idx} className={`grid grid-cols-12 p-3 text-sm items-center ${u.Name === usuarioActual ? 'bg-amber-500/10 font-medium' : 'text-slate-300'}`}>
-                      <span className="col-span-2 text-center text-amber-400 font-bold">{idx + 1}</span>
-                      <span className="col-span-7 text-white">{u.Name}</span>
-                      <span className="col-span-3 text-center font-bold text-amber-400">{u.PuntajeTotal || 0}</span>
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+                <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
+              </h2>
+              <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
+            </div>
+
+            <div className="space-y-2">
+              {users.length === 0 ? (
+                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                  Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
+                </div>
+              ) : (
+                users
+                  .map(user => ({ ...user, score: calculateScore(user) }))
+                  .sort((a, b) => b.score - a.score)
+                  .map((user, index) => (
+                    <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                        </div>
+                        <div>
+                          <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
+                            {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
+                            {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
+                            <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-black text-amber-300">{user.score}</span>
+                        <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
+                      </div>
                     </div>
                   ))
-                ) : (
-                  <div className="grid grid-cols-12 p-3 text-sm items-center bg-amber-500/10 font-medium">
-                    <span className="col-span-2 text-center text-amber-400 font-bold">1</span>
-                    <span className="col-span-7 text-white">{usuarioActual}</span>
-                    <span className="col-span-3 text-center font-bold text-amber-400">0</span>
-                  </div>
-                )}
+              )}
+            </div>
+          </div>
+        )}
+
+        {selectedUserForPicks && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
+                <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
+              </div>
+              <div className="space-y-2">
+                {games.map((game) => {
+                  const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
+                  return (
+                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-semibold">{game.away} vs {game.home}</span>
+                      <span className="font-black px-2.5 py-0.5 rounded-lg bg-[#D50A0A]/40 border border-[#D50A0A] text-white">{pick || 'Sin selección'}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         )}
 
+        {/* Reglas */}
+        {activeTab === 'rules' && (
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
+              </h2>
+              <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>1. Selección de Pronósticos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span>2. Cierre de Partidos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <span>3. Sistema de Puntuación</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
-
-      {/* Navegación Inferior (Estilo App móvil original) */}
-      <nav className="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-950 border-t border-slate-800 px-6 py-2.5 flex justify-between items-center text-xs">
-        <button 
-          onClick={() => setTabActiva('partidos')}
-          className={`flex flex-col items-center space-y-1 transition ${tabActiva === 'partidos' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-        >
-          <Calendar size={20} />
-          <span>Partidos</span>
-        </button>
-        <button 
-          onClick={() => setTabActiva('pronosticos')}
-          className={`flex flex-col items-center space-y-1 transition ${tabActiva === 'pronosticos' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-        >
-          <ListChecks size={20} />
-          <span>Pronósticos</span>
-        </button>
-        <button 
-          onClick={() => setTabActiva('tabla')}
-          className={`flex flex-col items-center space-y-1 transition ${tabActiva === 'tabla' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-        >
-          <Trophy size={20} />
-          <span>Posiciones</span>
-        </button>
-      </nav>
-
     </div>
   );
 }
