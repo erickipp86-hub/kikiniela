@@ -98,7 +98,7 @@ export default function App() {
       const dataUsers = await resUsers.json();
       if (Array.isArray(dataUsers)) {
         const formattedUsers = dataUsers
-          .filter(u => (u.Nombre || u.name)) // Filtrar solo los que tengan nombre real
+          .filter(u => (u.Nombre || u.name))
           .map((u, idx) => ({
             id: String(idx + 1),
             name: u.Nombre || u.name,
@@ -234,7 +234,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
-      {/* Header Super Limpio (Solo tu nombre) */}
+      {/* Header */}
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2.5">
@@ -329,7 +329,7 @@ export default function App() {
               <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {/* Tarjetas Compactas con Horario, Estado y Empate alineados abajo */}
+            {/* Tarjetas de Partidos */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.map((game) => {
@@ -340,7 +340,6 @@ export default function App() {
 
                   return (
                     <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                      {/* Equipos (Visitante vs Local) */}
                       <div className="grid grid-cols-2 gap-2.5 items-center">
                         <button
                           disabled={isLocked}
@@ -367,7 +366,6 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Barra Inferior Compacta: Horario, Empate y Estatus */}
                       <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
                         <span className="text-slate-300 flex items-center gap-1 font-medium">
                           <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -398,6 +396,7 @@ export default function App() {
               </div>
             )}
 
+            {/* Vista Rápida con Iconos Restaurados */}
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
@@ -426,16 +425,18 @@ export default function App() {
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, game.away, game.datetime)}
-                          className={`py-1.5 px-2 rounded-lg text-xs font-bold truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
                         >
-                          {game.away}
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.away}</span>
                         </button>
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, game.home, game.datetime)}
-                          className={`py-1.5 px-2 rounded-lg text-xs font-bold truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
                         >
-                          {game.home}
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.home}</span>
                         </button>
                       </div>
                     </div>
@@ -458,7 +459,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Resultados Rediseñados en Formato Lista Compacta */}
+        {/* Resultados */}
         {activeTab === 'results' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
@@ -502,7 +503,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Tabla de Posiciones Global (Solo usuarios registrados reales, sin filas vacías) */}
+        {/* Tabla */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
