@@ -324,10 +324,10 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate. Se guarda automáticamente.</p>
+              <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {/* Tarjetas Medianas de Partidos */}
+            {/* Tarjetas Medianas de Partidos con Empate Discreto abajo */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.map((game) => {
@@ -337,8 +337,8 @@ export default function App() {
                   const isLocked = isLockedByButton || dayLocked || isFinal;
 
                   return (
-                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                      <div className="flex justify-between items-center text-[11px] text-slate-300 mb-2 font-semibold">
+                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2.5" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                      <div className="flex justify-between items-center text-[11px] text-slate-300 font-semibold">
                         <span className="bg-[#002855] px-2 py-0.5 rounded-md text-slate-200 flex items-center gap-1 border border-white/10">
                           <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -351,8 +351,8 @@ export default function App() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 items-center">
-                        {/* Visitante */}
+                      {/* Equipos (Visitante vs Local) */}
+                      <div className="grid grid-cols-2 gap-2.5 items-center">
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, game.away, game.datetime)}
@@ -360,25 +360,11 @@ export default function App() {
                             selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
                           } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-9 h-9 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                           <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
                           {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
                         </button>
 
-                        {/* Empate (Tie) */}
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`py-3 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855]/50 border-white/10 text-slate-300 hover:bg-[#002855]'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                          <MinusCircle className="w-5 h-5 text-amber-300" />
-                          <span className="font-bold text-[10px]">Empate</span>
-                          {selectedTeam === 'Empate' && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500">Pick</span>}
-                        </button>
-
-                        {/* Local */}
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, game.home, game.datetime)}
@@ -386,9 +372,23 @@ export default function App() {
                             selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
                           } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-9 h-9 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                           <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
                           {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
+                        </button>
+                      </div>
+
+                      {/* Botón de Empate Discreto en la parte inferior */}
+                      <div className="flex justify-center pt-0.5">
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                          className={`px-3 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 transition ${
+                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855]/40 border-white/10 text-slate-300 hover:bg-[#002855]'
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                          <MinusCircle className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
                         </button>
                       </div>
                     </div>
@@ -410,22 +410,24 @@ export default function App() {
                   const isLocked = isLockedByButton || dayLocked || isFinal;
 
                   return (
-                    <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-1.5">
-                      <span className="text-[10px] text-slate-300 font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                      <div className="grid grid-cols-3 gap-1.5">
+                    <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-slate-300">
+                        <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
+                        >
+                          Empate {selectedTeam === 'Empate' && '✓'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, game.away, game.datetime)}
                           className={`py-1.5 px-2 rounded-lg text-xs font-bold truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
                         >
                           {game.away}
-                        </button>
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`py-1.5 px-1 rounded-lg text-[11px] font-bold ${selectedTeam === 'Empate' ? 'bg-amber-600 text-white ring-1 ring-white' : 'bg-[#001b3a] text-amber-300'}`}
-                        >
-                          Empate
                         </button>
                         <button
                           disabled={isLocked}
@@ -568,7 +570,7 @@ export default function App() {
           <div className="border rounded-2xl p-4 text-center shadow-md space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
             <h2 className="font-black text-amber-300 text-sm">Reglas de la Quiniela</h2>
             <p className="text-xs text-slate-200 leading-relaxed">
-              1. Selecciona tu ganador o elige Empate en cada tarjeta de partido.<br/>
+              1. Selecciona tu ganador o elige Empate en la parte inferior de cada tarjeta.<br/>
               2. Envía tus picks antes del cierre automático de 12 hrs.<br/>
               3. Gana 1 punto por cada acierto y compite en tiempo real en la tabla global sincronizada con Google Sheets.
             </p>
