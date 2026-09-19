@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award, Menu
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -45,6 +45,8 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [inputName, setInputName] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
   const [games, setGames] = useState([]);
@@ -53,7 +55,6 @@ export default function App() {
   const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
-  const [showConfigMenu, setShowConfigMenu] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -61,9 +62,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('kiki_quiniela_user');
-    if (savedUser) setCurrentUser(savedUser);
-    fetchAllDataSilent();
+    fetchAllDataSilent().then(() => {
+      const savedUser = localStorage.getItem('kiki_quiniela_user');
+      if (savedUser) {
+        setCurrentUser(savedUser);
+      }
+    });
   }, []);
 
   const fetchAllDataSilent = async () => {
@@ -118,7 +122,6 @@ export default function App() {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, locked, picks })
       });
     } catch (e) {
@@ -126,14 +129,33 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleNameSubmit = async (e) => {
     e.preventDefault();
     if (!inputName.trim()) return;
+    setLoginError('');
     const name = inputName.trim();
+
+    // Validar si el nombre ya existe en la base de datos global
+    const existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+    
+    // Si ya existe y este dispositivo no es el dueño guardado localmente, bloquear
+    const localSaved = localStorage.getItem('kiki_quiniela_user');
+    if (existing && localSaved && localSaved.toLowerCase() !== name.toLowerCase()) {
+      setLoginError('Este nombre ya está registrado por otro usuario. Elige uno diferente.');
+      return;
+    }
+
+    // Si el nombre ya existe en la hoja pero nadie lo tiene en este navegador, 
+    // evitamos que alguien más lo robe exigiendo que si es suyo, use su dispositivo, 
+    // o bien si la hoja está limpia (primer registro), lo acepta.
+    if (existing && !localSaved) {
+      setLoginError('Este nombre ya está en uso. Si eres tú, usa tu dispositivo original o elige otro.');
+      return;
+    }
+
     setCurrentUser(name);
     localStorage.setItem('kiki_quiniela_user', name);
 
-    let existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
     if (!existing) {
       const newUser = { id: Date.now().toString(), name, locked: false, picks: {}, puntajeTotal: 0 };
       setUsers([...users, newUser]);
@@ -141,6 +163,7 @@ export default function App() {
     } else {
       setUserPicks(existing.picks || {});
       setIsLockedByButton(existing.locked || false);
+      await syncUserToSheet(name, existing.locked, existing.picks);
     }
     fetchAllDataSilent();
   };
@@ -169,6 +192,7 @@ export default function App() {
     const updatedPicks = { ...userPicks, [gameId]: team };
     setUserPicks(updatedPicks);
     setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
+    
     await syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
   };
 
@@ -176,6 +200,7 @@ export default function App() {
     if (Object.keys(userPicks).length === 0) return;
     setIsLockedByButton(true);
     setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
+    
     await syncUserToSheet(currentUser, true, userPicks);
   };
 
@@ -191,6 +216,7 @@ export default function App() {
     return score;
   };
 
+  // Pantalla de Inicio (Solo Nombre, sin NIP)
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
@@ -208,11 +234,17 @@ export default function App() {
             la casa de las apuestas
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          {loginError && (
+            <div className="mb-4 bg-red-950/80 border border-red-500/50 text-red-200 text-xs py-2 px-3 rounded-xl font-bold">
+              {loginError}
+            </div>
+          )}
+
+          <form onSubmit={handleNameSubmit} className="space-y-4">
             <div className="relative">
               <input
                 type="text"
-                placeholder="NickName"
+                placeholder="Tu Nombre / NickName"
                 value={inputName}
                 onChange={(e) => setInputName(e.target.value)}
                 className="w-full bg-[#002855] border-2 rounded-2xl px-5 py-4 text-lg text-white placeholder-slate-400 focus:outline-none transition-all text-center font-bold shadow-inner"
@@ -226,7 +258,7 @@ export default function App() {
               className="w-full text-white font-black py-4 rounded-2xl text-lg shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-2"
               style={{ backgroundColor: '#D50A0A' }}
             >
-              ¡Que juegue!! <ChevronRight className="w-6 h-6" />
+              ¡Que juegue! <ChevronRight className="w-6 h-6" />
             </button>
           </form>
         </div>
@@ -252,38 +284,13 @@ export default function App() {
               <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
             </div>
           </div>
-          <div className="relative">
+          <div>
             <button
-              onClick={() => setShowConfigMenu(!showConfigMenu)}
-              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl border border-white/20 transition flex items-center justify-center text-white"
-              title="Menú de Configuración"
+              onClick={() => fetchAllDataSilent()}
+              className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl border border-white/20 transition text-xs font-bold text-slate-200"
             >
-              <Menu className="w-5 h-5" />
+              🔄 Sincronizar
             </button>
-
-            {showConfigMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('kiki_quiniela_user');
-                    setCurrentUser(null);
-                    setShowConfigMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-white/10 transition font-bold"
-                >
-                  Cambiar de usuario
-                </button>
-                <button
-                  onClick={() => {
-                    fetchAllDataSilent();
-                    setShowConfigMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold"
-                >
-                  Sincronizar datos
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
