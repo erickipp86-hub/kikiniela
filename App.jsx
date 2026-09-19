@@ -214,7 +214,7 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
+      <div className="min-h-screen text-white flex flex-col justify-center items-center p-4 overscroll-y-none" style={{ backgroundColor: '#002855', overscrollBehaviorY: 'none' }}>
         <div className="max-w-md w-full rounded-3xl p-8 border-2 shadow-2xl text-center relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
           <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: '#D50A0A' }}></div>
           
@@ -266,7 +266,7 @@ export default function App() {
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   return (
-    <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
+    <div className="min-h-screen text-white pb-24 font-sans select-none overscroll-y-none" style={{ backgroundColor: '#002855', overscrollBehaviorY: 'none' }}>
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2.5">
