@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Zap, Award
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -230,7 +230,10 @@ export default function App() {
     );
   }
 
-  const upcomingGamesForPicks = games.filter(g => String(g.week) === '2');
+  // Filtrar Semana 2 y ordenarlos cronológicamente por horario
+  const upcomingGamesForPicks = games
+    .filter(g => String(g.week) === '2')
+    .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
@@ -329,7 +332,7 @@ export default function App() {
               <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {/* Tarjetas de Partidos */}
+            {/* Tarjetas de Partidos Ordenadas */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.map((game) => {
@@ -396,7 +399,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Vista Rápida */}
+            {/* Vista Rápida Ordenada */}
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
@@ -569,7 +572,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Reglas Restauradas con Tarjetas Explicativas */}
+        {/* Reglas */}
         {activeTab === 'rules' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
