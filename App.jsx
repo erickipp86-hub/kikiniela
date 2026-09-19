@@ -190,34 +190,43 @@ export default function App() {
     return score;
   };
 
+  // Pantalla de Inicio exacta solicitada
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
         <div className="max-w-md w-full rounded-3xl p-8 border-2 shadow-2xl text-center relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
           <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: '#D50A0A' }}></div>
-          <div className="w-20 h-20 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner mb-4 border border-white/20">
+          
+          <div className="w-24 h-24 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner mb-4 border border-white/20">
             <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Kiki Niela NFL</h1>
-          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">¡Que juegue!</p>
+
+          <h1 className="text-3xl font-black tracking-tight text-white">
+            Kiki Niela NFL
+          </h1>
+          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">
+            la casa de las apuestas
+          </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Tu nombre..."
-              value={inputName}
-              onChange={(e) => setInputName(e.target.value)}
-              className="w-full bg-[#002855] border-2 rounded-2xl px-5 py-3.5 text-base text-white placeholder-slate-400 focus:outline-none transition-all text-center font-bold shadow-inner"
-              style={{ borderColor: '#D50A0A' }}
-              maxLength={20}
-              required
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="NickName"
+                value={inputName}
+                onChange={(e) => setInputName(e.target.value)}
+                className="w-full bg-[#002855] border-2 rounded-2xl px-5 py-4 text-lg text-white placeholder-slate-400 focus:outline-none transition-all text-center font-bold shadow-inner"
+                style={{ borderColor: '#D50A0A' }}
+                maxLength={20}
+                required
+              />
+            </div>
             <button
               type="submit"
-              className="w-full text-white font-black py-3.5 rounded-2xl text-base shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full text-white font-black py-4 rounded-2xl text-lg shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-2"
               style={{ backgroundColor: '#D50A0A' }}
             >
-              ¡Que juegue!
+              ¡Que juegue!! <ChevronRight className="w-6 h-6" />
             </button>
           </form>
         </div>
