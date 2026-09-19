@@ -46,17 +46,12 @@ export default function App() {
   const [inputName, setInputName] = useState('');
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
-  
-  // Punto 1: Inicializado en vacío para evitar parpadeos o datos falsos al refrescar
   const [games, setGames] = useState([]);
-  
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
   const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
-  
-  // Punto 2: Estado para el menú de configuración de 3 líneas
   const [showConfigMenu, setShowConfigMenu] = useState(false);
 
   useEffect(() => {
@@ -89,7 +84,6 @@ export default function App() {
         setGames(formattedGames);
       }
 
-      // Punto 3 y 4: Carga y sincronización de usuarios independientes con acumulados históricos desde Sheets
       const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
       const dataUsers = await resUsers.json();
       if (Array.isArray(dataUsers)) {
@@ -185,7 +179,6 @@ export default function App() {
   };
 
   const calculateScore = (user) => {
-    // Si la hoja de cálculo ya trae un puntaje acumulado histórico, se respeta; de lo contrario se calcula de los partidos
     let score = user.puntajeTotal || 0;
     if (score === 0) {
       games.forEach(game => {
@@ -238,7 +231,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
-      {/* Header con Menú de Configuración de 3 líneas (Punto 2) */}
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2.5">
@@ -260,7 +252,6 @@ export default function App() {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Menú desplegable hamburguesa */}
             {showConfigMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
                 <button
@@ -287,7 +278,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="grid grid-cols-4 gap-1 bg-[#002855] p-1 rounded-xl border border-white/20 shadow-inner">
           <button
             onClick={() => setActiveTab('picks')}
@@ -320,7 +310,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="max-w-md mx-auto p-3 mt-1">
         {activeTab === 'picks' && (
           <div className="space-y-3">
@@ -356,12 +345,11 @@ export default function App() {
               <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {/* Tarjetas de Partidos Ordenadas */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
                 {games.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    Cargando partidos desde Google Sheets...
+                    Actualizando
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
@@ -429,7 +417,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Vista Rápida Ordenada */}
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
@@ -492,7 +479,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Resultados */}
         {activeTab === 'results' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
@@ -536,7 +522,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Tabla */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
@@ -602,7 +587,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Reglas */}
         {activeTab === 'rules' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
