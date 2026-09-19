@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award, Menu
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -41,28 +41,23 @@ const TEAM_LOGOS = {
 const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
 
-const INITIAL_GAMES = [
-  { id: 16, week: 2, home: 'Chiefs', away: 'Ravens', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 17, week: 2, home: '49ers', away: 'Cowboys', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 18, week: 2, home: 'Bills', away: 'Dolphins', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 19, week: 2, home: 'Commanders', away: 'Eagles', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 20, week: 2, home: 'Lions', away: 'Packers', datetime: '2026-09-20T15:05:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 21, week: 2, home: 'Bengals', away: 'Steelers', datetime: '2026-09-20T13:00:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 22, week: 2, home: 'Cowboys', away: 'Giants', datetime: '2026-09-21T19:15:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' },
-  { id: 23, week: 2, home: 'Rams', away: 'Seahawks', datetime: '2026-09-20T16:25:00', status: 'upcoming', winner: null, scoreHome: '', scoreAway: '' }
-];
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [inputName, setInputName] = useState('');
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
-  const [games, setGames] = useState(INITIAL_GAMES);
+  
+  // Punto 1: Inicializado en vacío para evitar parpadeos o datos falsos al refrescar
+  const [games, setGames] = useState([]);
+  
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
   const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
+  
+  // Punto 2: Estado para el menú de configuración de 3 líneas
+  const [showConfigMenu, setShowConfigMenu] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -94,6 +89,7 @@ export default function App() {
         setGames(formattedGames);
       }
 
+      // Punto 3 y 4: Carga y sincronización de usuarios independientes con acumulados históricos desde Sheets
       const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
       const dataUsers = await resUsers.json();
       if (Array.isArray(dataUsers)) {
@@ -103,7 +99,8 @@ export default function App() {
             id: String(idx + 1),
             name: u.Nombre || u.name,
             locked: String(u.Locked).toUpperCase() === 'TRUE' || u.locked === true,
-            picks: u.Picks || u.picks || {}
+            picks: u.Picks || u.picks || {},
+            puntajeTotal: Number(u.PuntajeTotal || u.puntajeTotal || 0)
           }));
         setUsers(formattedUsers);
 
@@ -125,6 +122,8 @@ export default function App() {
     try {
       await fetch(SCRIPT_URL, {
         method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, locked, picks })
       });
     } catch (e) {
@@ -141,7 +140,7 @@ export default function App() {
 
     let existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
     if (!existing) {
-      const newUser = { id: Date.now().toString(), name, locked: false, picks: {} };
+      const newUser = { id: Date.now().toString(), name, locked: false, picks: {}, puntajeTotal: 0 };
       setUsers([...users, newUser]);
       await syncUserToSheet(name, false, {});
     } else {
@@ -186,16 +185,18 @@ export default function App() {
   };
 
   const calculateScore = (user) => {
-    let score = 0;
-    games.forEach(game => {
-      if (game.status === 'final' && game.winner && user.picks && user.picks[game.id] === game.winner) {
-        score += 1;
-      }
-    });
+    // Si la hoja de cálculo ya trae un puntaje acumulado histórico, se respeta; de lo contrario se calcula de los partidos
+    let score = user.puntajeTotal || 0;
+    if (score === 0) {
+      games.forEach(game => {
+        if (game.status === 'final' && game.winner && user.picks && user.picks[game.id] === game.winner) {
+          score += 1;
+        }
+      });
+    }
     return score;
   };
 
-  // Pantalla de Inicio Integrada con el botón exacto "¡Que juegue!"
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
@@ -205,7 +206,7 @@ export default function App() {
             <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-white">Kiki Niela NFL</h1>
-          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">LA CASA DE LAS APUESTAS</p>
+          <p className="text-xs uppercase font-extrabold tracking-widest mt-1 mb-8 text-amber-300">¡Que juegue!</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <input
@@ -231,14 +232,13 @@ export default function App() {
     );
   }
 
-  // Filtrar Semana 2 y ordenarlos cronológicamente por horario
   const upcomingGamesForPicks = games
     .filter(g => String(g.week) === '2')
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
-      {/* Header */}
+      {/* Header con Menú de Configuración de 3 líneas (Punto 2) */}
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2.5">
@@ -247,20 +247,43 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-black text-lg tracking-tight text-white leading-tight">Kiki Niela NFL</h1>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">LA CASA DE LAS APUESTAS</p>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">la casa de las apuestas</p>
               <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
             </div>
           </div>
-          <div>
+          <div className="relative">
             <button
-              onClick={() => {
-                localStorage.removeItem('kiki_quiniela_user');
-                setCurrentUser(null);
-              }}
-              className="bg-white/10 hover:bg-white/20 text-xs px-3 py-1.5 rounded-xl border border-white/20 font-semibold transition"
+              onClick={() => setShowConfigMenu(!showConfigMenu)}
+              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl border border-white/20 transition flex items-center justify-center text-white"
+              title="Menú de Configuración"
             >
-              Cambiar
+              <Menu className="w-5 h-5" />
             </button>
+
+            {/* Menú desplegable hamburguesa */}
+            {showConfigMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('kiki_quiniela_user');
+                    setCurrentUser(null);
+                    setShowConfigMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-white/10 transition font-bold"
+                >
+                  Cambiar de usuario
+                </button>
+                <button
+                  onClick={() => {
+                    fetchAllDataSilent();
+                    setShowConfigMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold"
+                >
+                  Sincronizar datos
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -336,67 +359,73 @@ export default function App() {
             {/* Tarjetas de Partidos Ordenadas */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
-                {upcomingGamesForPicks.map((game) => {
-                  const selectedTeam = userPicks[game.id];
-                  const isFinal = game.status === 'final';
-                  const dayLocked = isDayLocked(game.datetime);
-                  const isLocked = isLockedByButton || dayLocked || isFinal;
+                {games.length === 0 ? (
+                  <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
+                    Cargando partidos desde Google Sheets...
+                  </div>
+                ) : (
+                  upcomingGamesForPicks.map((game) => {
+                    const selectedTeam = userPicks[game.id];
+                    const isFinal = game.status === 'final';
+                    const dayLocked = isDayLocked(game.datetime);
+                    const isLocked = isLockedByButton || dayLocked || isFinal;
 
-                  return (
-                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                      <div className="grid grid-cols-2 gap-2.5 items-center">
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, game.away, game.datetime)}
-                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                            selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
-                          <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
-                          {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
-                        </button>
+                    return (
+                      <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                        <div className="grid grid-cols-2 gap-2.5 items-center">
+                          <button
+                            disabled={isLocked}
+                            onClick={() => handlePick(game.id, game.away, game.datetime)}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                              selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                            <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
+                            {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
+                          </button>
 
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, game.home, game.datetime)}
-                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                            selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
-                          <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
-                          {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
-                        </button>
+                          <button
+                            disabled={isLocked}
+                            onClick={() => handlePick(game.id, game.home, game.datetime)}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                              selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                            <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
+                            {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
+                          <span className="text-slate-300 flex items-center gap-1 font-medium">
+                            <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+
+                          <button
+                            disabled={isLocked}
+                            onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                            className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                              selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            <MinusCircle className="w-3 h-3" />
+                            <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
+                          </button>
+
+                          {isFinal ? (
+                            <span className="text-emerald-300 font-bold">Finalizado</span>
+                          ) : dayLocked ? (
+                            <span className="text-red-300 font-bold">Cerrado</span>
+                          ) : (
+                            <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
-                        <span className="text-slate-300 flex items-center gap-1 font-medium">
-                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
-                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                          <MinusCircle className="w-3 h-3" />
-                          <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
-                        </button>
-
-                        {isFinal ? (
-                          <span className="text-emerald-300 font-bold">Finalizado</span>
-                        ) : dayLocked ? (
-                          <span className="text-red-300 font-bold">Cerrado</span>
-                        ) : (
-                          <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
 
@@ -449,7 +478,7 @@ export default function App() {
               </div>
             )}
 
-            {!isLockedByButton && (
+            {!isLockedByButton && games.length > 0 && (
               <div className="pt-2 pb-4">
                 <button
                   onClick={lockAndSubmitPicks}
@@ -467,7 +496,7 @@ export default function App() {
         {activeTab === 'results' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <h2 className="font-black text-amber-300 text-sm mb-0.5">Resultados Históricos (Semana 1)</h2>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5">Resultados Históricos</h2>
               <p className="text-[11px] text-slate-300">Marcadores finales y tus aciertos.</p>
             </div>
 
