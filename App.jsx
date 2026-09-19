@@ -35,7 +35,8 @@ const TEAM_LOGOS = {
   'Raiders': 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png',
   'Chargers': 'https://a.espncdn.com/i/teamlogos/nfl/500/lac.png',
   'Cardinals': 'https://a.espncdn.com/i/teamlogos/nfl/500/ari.png',
-  'Broncos': 'https://a.espncdn.com/i/teamlogos/nfl/500/den.png'
+  'Broncos': 'https://a.espncdn.com/i/teamlogos/nfl/500/den.png',
+  'Patriots': 'https://a.espncdn.com/i/teamlogos/nfl/500/ne.png'
 };
 
 const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
@@ -190,7 +191,6 @@ export default function App() {
     return score;
   };
 
-  // Pantalla de Inicio exacta solicitada
   if (!currentUser) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#002855' }}>
