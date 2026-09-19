@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Zap, Award
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -396,7 +396,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Vista Rápida con Iconos Restaurados */}
+            {/* Vista Rápida */}
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
@@ -569,14 +569,47 @@ export default function App() {
           </div>
         )}
 
+        {/* Reglas Restauradas con Tarjetas Explicativas */}
         {activeTab === 'rules' && (
-          <div className="border rounded-2xl p-4 text-center shadow-md space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-            <h2 className="font-black text-amber-300 text-sm">Reglas de la Quiniela</h2>
-            <p className="text-xs text-slate-200 leading-relaxed">
-              1. Selecciona tu ganador o elige Empate en la barra inferior de cada tarjeta.<br/>
-              2. Envía tus picks antes del cierre automático de 12 hrs.<br/>
-              3. Gana 1 punto por cada acierto y compite en tiempo real en la tabla global sincronizada con Google Sheets.
-            </p>
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
+              </h2>
+              <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>1. Selección de Pronósticos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span>2. Cierre de Partidos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <span>3. Sistema de Puntuación</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </main>
