@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Users, Eye, CheckCircle2, XCircle, MinusCircle
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -97,12 +97,14 @@ export default function App() {
       const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
       const dataUsers = await resUsers.json();
       if (Array.isArray(dataUsers)) {
-        const formattedUsers = dataUsers.map((u, idx) => ({
-          id: String(idx + 1),
-          name: u.Nombre || u.name,
-          locked: String(u.Locked).toUpperCase() === 'TRUE' || u.locked === true,
-          picks: u.Picks || u.picks || {}
-        }));
+        const formattedUsers = dataUsers
+          .filter(u => (u.Nombre || u.name)) // Filtrar solo los que tengan nombre real
+          .map((u, idx) => ({
+            id: String(idx + 1),
+            name: u.Nombre || u.name,
+            locked: String(u.Locked).toUpperCase() === 'TRUE' || u.locked === true,
+            picks: u.Picks || u.picks || {}
+          }));
         setUsers(formattedUsers);
 
         const savedUser = localStorage.getItem('kiki_quiniela_user');
@@ -232,7 +234,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
-      {/* Header Limpio */}
+      {/* Header Super Limpio (Solo tu nombre) */}
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2.5">
@@ -242,7 +244,7 @@ export default function App() {
             <div>
               <h1 className="font-black text-lg tracking-tight text-white leading-tight">Kiki Niela NFL</h1>
               <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">la casa de las apuestas</p>
-              <p className="text-xs text-slate-200 font-medium mt-0.5">Participante: <span className="underline font-bold text-amber-300">{currentUser}</span></p>
+              <p className="text-xs font-bold text-amber-300 mt-0.5">{currentUser}</p>
             </div>
           </div>
           <div>
@@ -327,7 +329,7 @@ export default function App() {
               <p className="text-[11px] text-slate-300">Toca tu ganador o selecciona Empate abajo. Se guarda automáticamente.</p>
             </div>
 
-            {/* Tarjetas Medianas de Partidos con Empate Discreto abajo */}
+            {/* Tarjetas Compactas con Horario, Estado y Empate alineados abajo */}
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.map((game) => {
@@ -337,20 +339,7 @@ export default function App() {
                   const isLocked = isLockedByButton || dayLocked || isFinal;
 
                   return (
-                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2.5" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                      <div className="flex justify-between items-center text-[11px] text-slate-300 font-semibold">
-                        <span className="bg-[#002855] px-2 py-0.5 rounded-md text-slate-200 flex items-center gap-1 border border-white/10">
-                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {isFinal ? (
-                          <span className="text-emerald-300 font-bold">Finalizado</span>
-                        ) : dayLocked ? (
-                          <span className="text-red-300 font-bold">Cerrado</span>
-                        ) : (
-                          <span className="text-amber-300 font-bold flex items-center gap-1"><Unlock className="w-3 h-3" /> Abierto</span>
-                        )}
-                      </div>
-
+                    <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
                       {/* Equipos (Visitante vs Local) */}
                       <div className="grid grid-cols-2 gap-2.5 items-center">
                         <button
@@ -360,7 +349,7 @@ export default function App() {
                             selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
                           } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-9 h-9 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                           <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
                           {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
                         </button>
@@ -372,24 +361,36 @@ export default function App() {
                             selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
                           } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-9 h-9 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                           <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
                           {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
                         </button>
                       </div>
 
-                      {/* Botón de Empate Discreto en la parte inferior */}
-                      <div className="flex justify-center pt-0.5">
+                      {/* Barra Inferior Compacta: Horario, Empate y Estatus */}
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
+                        <span className="text-slate-300 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`px-3 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 transition ${
-                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855]/40 border-white/10 text-slate-300 hover:bg-[#002855]'
+                          className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
                           } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          <MinusCircle className="w-3.5 h-3.5 text-amber-300" />
+                          <MinusCircle className="w-3 h-3" />
                           <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
                         </button>
+
+                        {isFinal ? (
+                          <span className="text-emerald-300 font-bold">Finalizado</span>
+                        ) : dayLocked ? (
+                          <span className="text-red-300 font-bold">Cerrado</span>
+                        ) : (
+                          <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -501,6 +502,7 @@ export default function App() {
           </div>
         )}
 
+        {/* Tabla de Posiciones Global (Solo usuarios registrados reales, sin filas vacías) */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
@@ -512,8 +514,8 @@ export default function App() {
 
             <div className="space-y-2">
               {users.length === 0 ? (
-                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a' }}>
-                  Aún no hay participantes registrados.
+                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                  Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
                 </div>
               ) : (
                 users
@@ -523,7 +525,7 @@ export default function App() {
                     <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
-                          {index === 0 ? '🥇' : `#${index + 1}`}
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                         </div>
                         <div>
                           <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
@@ -570,7 +572,7 @@ export default function App() {
           <div className="border rounded-2xl p-4 text-center shadow-md space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
             <h2 className="font-black text-amber-300 text-sm">Reglas de la Quiniela</h2>
             <p className="text-xs text-slate-200 leading-relaxed">
-              1. Selecciona tu ganador o elige Empate en la parte inferior de cada tarjeta.<br/>
+              1. Selecciona tu ganador o elige Empate en la barra inferior de cada tarjeta.<br/>
               2. Envía tus picks antes del cierre automático de 12 hrs.<br/>
               3. Gana 1 punto por cada acierto y compite en tiempo real en la tabla global sincronizada con Google Sheets.
             </p>
