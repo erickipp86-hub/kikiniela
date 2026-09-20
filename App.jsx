@@ -184,11 +184,8 @@ export default function App() {
   }, {});
 
   const isDayLocked = (gameDatetime) => {
-    const dateKey = gameDatetime.split('T')[0];
-    const earliestTime = earliestGamePerDay[dateKey];
-    if (!earliestTime) return false;
-    const diffHours = (earliestTime - currentTime.getTime()) / (1000 * 60 * 60);
-    return diffHours < 12;
+    return false; // Desactivado por completo: ningún partido se bloquea por horario
+
   };
 
   const handlePick = async (gameId, team, gameDatetime) => {
