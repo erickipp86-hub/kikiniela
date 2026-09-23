@@ -219,7 +219,7 @@ export default function App() {
           
           <div className="w-24 h-24 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner mb-4 border border-white/20">
             <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
-        </div>
+          </div>
 
           <h1 className="text-3xl font-black tracking-tight text-white">
             Kiki Niela NFL
@@ -267,6 +267,12 @@ export default function App() {
     .filter(g => String(g.week).trim() === String(currentActiveWeek).trim())
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
+  // Lógica para determinar si la semana visualizada ya pasó / está cerrada (si todos sus partidos son finalizados o si es menor a la actual)
+  const isCurrentWeekActive = String(currentActiveWeek) === '3'; // Asumiendo semana 3 como la actual por defecto
+  const weekHasGames = upcomingGamesForPicks.length > 0;
+  const allGamesFinalInWeek = weekHasGames && upcomingGamesForPicks.every(g => g.status === 'final');
+  const isWeekClosed = !isCurrentWeekActive || allGamesFinalInWeek;
+
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
       <header className="pt-4 pb-3 px-4 rounded-b-3xl shadow-xl sticky top-0 z-40 backdrop-blur-md bg-opacity-95 border-b-2" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
@@ -305,7 +311,6 @@ export default function App() {
 
                 <div className="border-t border-white/10 my-1"></div>
 
-                {/* Acordeón de Semanas en el Menú */}
                 <div>
                   <button
                     onClick={() => setShowWeeksAccordion(!showWeeksAccordion)}
@@ -384,7 +389,11 @@ export default function App() {
               
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  {isLockedByButton ? (
+                  {isWeekClosed ? (
+                    <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
+                      <Lock className="w-3 h-3" /> Semana {currentActiveWeek} Cerrada
+                    </span>
+                  ) : isLockedByButton ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
                       <Lock className="w-3 h-3" /> Picks Enviados ({currentActiveWeek})
                     </span>
@@ -417,14 +426,14 @@ export default function App() {
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    No hay partidos programados para la Semana {currentActiveWeek}.
+                    Cargando partidos...
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
                     const selectedTeam = userPicks[game.id];
                     const isFinal = game.status === 'final';
                     const dayLocked = isDayLocked(game.datetime);
-                    const isLocked = isLockedByButton || dayLocked || isFinal;
+                    const isLocked = isLockedByButton || dayLocked || isFinal || isWeekClosed;
 
                     return (
                       <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
@@ -495,7 +504,7 @@ export default function App() {
               const selectedTeam = userPicks[game.id];
               const isFinal = game.status === 'final';
               const dayLocked = isDayLocked(game.datetime);
-              const isLocked = isLockedByButton || dayLocked || isFinal;
+              const isLocked = isLockedByButton || dayLocked || isFinal || isWeekClosed;
 
               return (
                 <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
@@ -531,20 +540,31 @@ export default function App() {
               );
             })}
           </div>
-        )}
+          )}
 
-        {!isLockedByButton && games.length > 0 && (
-          <div className="pt-2 pb-4">
-            <button
-              onClick={lockAndSubmitPicks}
-              className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
-              style={{ backgroundColor: '#D50A0A' }}
-            >
-              Enviar Mis Picks 🔒
-            </button>
-          </div>
-        )}
-      </div>
+          {/* El botón de enviar picks solo aparece si es la semana en curso y no se ha enviado */}
+          {!isWeekClosed && games.length > 0 && (
+            <div className="pt-2 pb-4">
+              <button
+                onClick={lockAndSubmitPicks}
+                disabled={isLockedByButton}
+                className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
+                style={{ backgroundColor: isLockedByButton ? '#1e3a5f' : '#D50A0A' }}
+              >
+                {isLockedByButton ? 'Picks Enviados 🔒' : 'Enviar Mis Picks 🔒'}
+              </button>
+            </div>
+          )}
+
+          {/* Para semanas anteriores o cerradas, muestra un aviso fijo de picks enviados/cerrado */}
+          {isWeekClosed && (
+            <div className="pt-2 pb-4">
+              <div className="w-full text-slate-300 font-bold py-3 rounded-2xl text-xs shadow-xl flex items-center justify-center gap-2 border border-white/10 bg-[#001b3a] text-center">
+                🔒 Semana Cerrada / Picks Registrados
+              </div>
+            </div>
+          )}
+        </div>
         )}
 
         {activeTab === 'results' && (
@@ -586,143 +606,143 @@ export default function App() {
                 );
               })
             )}
-          </div>
         </div>
-        )}
+      </div>
+      )}
 
-        {activeTab === 'leaderboard' && (
-          <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-                <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
-              </h2>
-              <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
+      {activeTab === 'leaderboard' && (
+        <div className="space-y-3">
+          <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+            <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
+            </h2>
+            <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
+          </div>
+
+          <div className="space-y-2">
+            {users.length === 0 ? (
+              <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
             </div>
-
-            <div className="space-y-2">
-              {users.length === 0 ? (
-                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                  Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
+            ) : (
+              users
+                .map(user => ({ ...user, score: calculateScore(user) }))
+                .sort((a, b) => b.score - a.score)
+                .map((user, index) => (
+                  <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                      </div>
+                      <div>
+                        <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
+                          {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
+                          {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
+                          <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-black text-amber-300">{user.score}</span>
+                      <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
+                    </div>
                 </div>
-              ) : (
-                users
-                  .map(user => ({ ...user, score: calculateScore(user) }))
-                  .sort((a, b) => b.score - a.score)
-                  .map((user, index) => (
-                    <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                        </div>
-                        <div>
-                          <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
-                            {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
-                            {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
-                            <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xl font-black text-amber-300">{user.score}</span>
-                        <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
-                      </div>
-                  </div>
-                ))
-            )}
-          </div>
+              ))
+          )}
         </div>
-        )}
+      </div>
+      )}
 
-        {selectedUserForPicks && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
-                <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
-              </div>
-              <div className="space-y-2">
-                {games.map((game) => {
-                  const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
-                  const isFinal = game.status === 'final';
-                  const gotItRight = isFinal && game.winner && pick && pick === game.winner;
+      {selectedUserForPicks && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+            <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+              <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
+              <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
+            </div>
+            <div className="space-y-2">
+              {games.map((game) => {
+                const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
+                const isFinal = game.status === 'final';
+                const gotItRight = isFinal && game.winner && pick && pick === game.winner;
 
-                  return (
-                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
-                        <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
-                          pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
+                return (
+                  <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
+                      <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
+                        pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}>
+                        {pick || 'Sin selección'}
+                      </span>
+                    </div>
+                     
+                    {isFinal ? (
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                        <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
+                        <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
                         }`}>
-                          {pick || 'Sin selección'}
+                          {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
+                          {gotItRight ? '+1 pt' : '0 pt'}
                         </span>
                       </div>
-                      
-                      {isFinal ? (
-                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
-                          <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
-                          <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                            gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
-                          }`}>
-                            {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
-                            {gotItRight ? '+1 pt' : '0 pt'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
-                          <span>Partido en curso / pendiente</span>
-                        </div>
-                      )}
+                    ) : (
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
+                        <span>Partido en curso / pendiente</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
         </div>
-        )}
+      )}
 
-        {activeTab === 'rules' && (
-          <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
-              </h2>
-              <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+      {activeTab === 'rules' && (
+        <div className="space-y-3">
+          <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+            <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
+            </h2>
+            <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>1. Selección de Pronósticos</span>
+              </div>
+              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
+              </p>
             </div>
 
-            <div className="space-y-2.5">
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>1. Selección de Pronósticos</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
-                </p>
+            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>2. Cierre de Partidos</span>
               </div>
+              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
+              </p>
+            </div>
 
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span>2. Cierre de Partidos</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
-                </p>
+            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                <Award className="w-4 h-4 text-amber-400" />
+                <span>3. Sistema de Puntuación</span>
               </div>
-
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <Award className="w-4 h-4 text-amber-400" />
-                  <span>3. Sistema de Puntuación</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
+              </p>
             </div>
           </div>
-        )}
-      </main>
-    </div>
-  );
+        </div>
+      )}
+    </main>
+  </div>
+);
 }
