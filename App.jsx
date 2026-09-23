@@ -55,7 +55,7 @@ export default function App() {
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
-  const [isLockedByButton, setIsLockedByButton] = useState(false);
+  const [lockedWeeks, setLockedWeeks] = useState({}); 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
@@ -79,7 +79,6 @@ export default function App() {
     fetchAllDataSilent();
   }, []);
 
-  // Actualizar semana seleccionada automáticamente si la semana 3 está presente en los datos
   useEffect(() => {
     if (games.length > 0) {
       const weeks = Array.from(new Set(games.map(g => String(g.week))));
@@ -129,7 +128,9 @@ export default function App() {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
             setUserPicks(found.picks || {});
-            setIsLockedByButton(found.locked || false);
+            const isUserLocked = found.locked || false;
+            // Si la hoja ya tiene bloqueado globalmente, puedes ajustarlo por semana si lo deseas
+            setLockedWeeks(prev => ({ ...prev, [selectedWeek]: isUserLocked }));
           }
         }
       }
@@ -178,7 +179,7 @@ export default function App() {
       await syncUserToSheet(name, false, {});
     } else {
       setUserPicks(existing.picks || {});
-      setIsLockedByButton(existing.locked || false);
+      setLockedWeeks(prev => ({ ...prev, [selectedWeek]: existing.locked || false }));
       await syncUserToSheet(name, existing.locked, existing.picks);
     }
     fetchAllDataSilent();
@@ -189,19 +190,22 @@ export default function App() {
   };
 
   const handlePick = async (gameId, team, gameDatetime) => {
-    if (isLockedByButton) return;
+    if (lockedWeeks[selectedWeek]) return;
     if (isDayLocked(gameDatetime)) return;
 
     const updatedPicks = { ...userPicks, [gameId]: team };
     setUserPicks(updatedPicks);
     setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
     
-    await syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
+    await syncUserToSheet(currentUser, lockedWeeks[selectedWeek] || false, updatedPicks);
   };
 
   const lockAndSubmitPicks = async () => {
-    if (Object.keys(userPicks).length === 0) return;
-    setIsLockedByButton(true);
+    const weekGameIds = games.filter(g => String(g.week) === String(selectedWeek)).map(g => g.id);
+    const hasPicksForWeek = weekGameIds.some(id => userPicks[id]);
+    if (!hasPicksForWeek) return;
+
+    setLockedWeeks(prev => ({ ...prev, [selectedWeek]: true }));
     setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
     
     await syncUserToSheet(currentUser, true, userPicks);
@@ -268,12 +272,13 @@ export default function App() {
     );
   }
 
-  // Obtener semanas disponibles ordenadas
   const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => String(g.week)))).sort() : ['2', '3'];
 
   const upcomingGamesForPicks = games
     .filter(g => String(g.week) === String(selectedWeek))
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+
+  const isCurrentWeekLocked = lockedWeeks[selectedWeek] || false;
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
@@ -367,7 +372,7 @@ export default function App() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  {isLockedByButton ? (
+                  {isCurrentWeekLocked ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
                       <Lock className="w-3 h-3" /> Picks Enviados
                     </span>
@@ -407,7 +412,7 @@ export default function App() {
                     const selectedTeam = userPicks[game.id];
                     const isFinal = game.status === 'final';
                     const dayLocked = isDayLocked(game.datetime);
-                    const isLocked = isLockedByButton || dayLocked || isFinal;
+                    const isLocked = isCurrentWeekLocked || dayLocked || isFinal;
 
                     return (
                       <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
@@ -478,7 +483,7 @@ export default function App() {
                   const selectedTeam = userPicks[game.id];
                   const isFinal = game.status === 'final';
                   const dayLocked = isDayLocked(game.datetime);
-                  const isLocked = isLockedByButton || dayLocked || isFinal;
+                  const isLocked = isCurrentWeekLocked || dayLocked || isFinal;
 
                   return (
                     <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
@@ -516,7 +521,7 @@ export default function App() {
               </div>
             )}
 
-            {!isLockedByButton && games.length > 0 && (
+            {!isCurrentWeekLocked && games.length > 0 && (
               <div className="pt-2 pb-4">
                 <button
                   onClick={lockAndSubmitPicks}
