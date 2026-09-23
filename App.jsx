@@ -43,7 +43,6 @@ const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
 
 export default function App() {
-  // Inicialización directa para evitar que pase por null al arrancar
   const [currentUser, setCurrentUser] = useState(() => {
     return localStorage.getItem('kiki_quiniela_user') || null;
   });
@@ -52,6 +51,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
+  const [selectedWeek, setSelectedWeek] = useState('3'); 
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
@@ -65,12 +65,10 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Bloquear gesto nativo de pull-to-refresh en móviles
   useEffect(() => {
     const preventPullToRefresh = (e) => {
       if (window.scrollY === 0 && e.touches[0].clientY > 50) {
-        // Solo bloquea si está en el tope superior absoluto
-        // e.preventDefault(); // Comentado para no bloquear el scroll normal
+        // e.preventDefault();
       }
     };
     window.addEventListener('touchmove', preventPullToRefresh, { passive: true });
@@ -81,6 +79,18 @@ export default function App() {
     fetchAllDataSilent();
   }, []);
 
+  // Actualizar semana seleccionada automáticamente si la semana 3 está presente en los datos
+  useEffect(() => {
+    if (games.length > 0) {
+      const weeks = Array.from(new Set(games.map(g => String(g.week))));
+      if (weeks.includes('3') && selectedWeek !== '3') {
+        setSelectedWeek('3');
+      } else if (weeks.length > 0 && !weeks.includes(selectedWeek)) {
+        setSelectedWeek(weeks[weeks.length - 1]);
+      }
+    }
+  }, [games]);
+
   const fetchAllDataSilent = async () => {
     try {
       const resGames = await fetch(SCRIPT_URL);
@@ -88,7 +98,7 @@ export default function App() {
       if (Array.isArray(dataGames) && dataGames.length > 0) {
         const formattedGames = dataGames.map((item, index) => ({
           id: Number(item.ID) || index + 1,
-          week: item.Semana || '2',
+          week: String(item.Semana || '2'),
           home: item.Local,
           away: item.Visitante,
           datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
@@ -174,17 +184,8 @@ export default function App() {
     fetchAllDataSilent();
   };
 
-  const earliestGamePerDay = games.reduce((acc, game) => {
-    const dateKey = game.datetime.split('T')[0];
-    const gameTime = new Date(game.datetime).getTime();
-    if (!acc[dateKey] || gameTime < acc[dateKey]) {
-      acc[dateKey] = gameTime;
-    }
-    return acc;
-  }, {});
-
   const isDayLocked = (gameDatetime) => {
-    return false; // Desactivado por completo: ningún partido se bloquea por horario
+    return false; // Desactivado por completo
   };
 
   const handlePick = async (gameId, team, gameDatetime) => {
@@ -267,8 +268,11 @@ export default function App() {
     );
   }
 
+  // Obtener semanas disponibles ordenadas
+  const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => String(g.week)))).sort() : ['2', '3'];
+
   const upcomingGamesForPicks = games
-    .filter(g => String(g.week) === '2')
+    .filter(g => String(g.week) === String(selectedWeek))
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   return (
@@ -346,8 +350,22 @@ export default function App() {
       <main className="max-w-md mx-auto p-3 mt-1">
         {activeTab === 'picks' && (
           <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <div className="flex items-center justify-between mb-2">
+            <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden space-y-2.5" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              
+              {/* Selector de Semanas */}
+              <div className="flex items-center justify-center gap-1.5 bg-[#002855] p-1 rounded-xl border border-white/20">
+                {availableWeeks.map(w => (
+                  <button
+                    key={w}
+                    onClick={() => setSelectedWeek(w)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition ${String(selectedWeek) === String(w) ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300 hover:text-white'}`}
+                  >
+                    Semana {w}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between">
                 <div>
                   {isLockedByButton ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
@@ -355,7 +373,7 @@ export default function App() {
                     </span>
                   ) : (
                     <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                      <Unlock className="w-3 h-3" /> Semana 2 Abierta
+                      <Unlock className="w-3 h-3" /> Semana {selectedWeek} Abierta
                     </span>
                   )}
                 </div>
@@ -380,9 +398,9 @@ export default function App() {
 
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
-                {games.length === 0 ? (
+                {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    Actualizando
+                    No hay partidos programados para la Semana {selectedWeek}
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
@@ -453,8 +471,8 @@ export default function App() {
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                  <span>⚡ Vista Rápida (Semana 2)</span>
-                  <span>{Object.keys(userPicks).length} / {upcomingGamesForPicks.length} elegidos</span>
+                  <span>⚡ Vista Rápida (Semana {selectedWeek})</span>
+                  <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
                 </div>
                 {upcomingGamesForPicks.map((game) => {
                   const selectedTeam = userPicks[game.id];
@@ -538,7 +556,7 @@ export default function App() {
                           <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                         )}
                         <div>
-                          <p className="font-bold text-white text-xs">{game.away} vs {game.home}</p>
+                          <p className="font-bold text-white text-xs">Sem. {game.week}: {game.away} vs {game.home}</p>
                           <p className="text-[10px] text-slate-300">Ganador: <span className="text-amber-300 font-bold">{game.winner}</span> {game.scoreAway !== '' && `(${game.scoreAway}-${game.scoreHome})`}</p>
                         </div>
                       </div>
@@ -610,12 +628,11 @@ export default function App() {
                   const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
                   const isFinal = game.status === 'final';
                   const gotItRight = isFinal && game.winner && pick && pick === game.winner;
-                  const gotItWrong = isFinal && game.winner && (!pick || pick !== game.winner);
 
                   return (
                     <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-300 font-semibold">{game.away} vs {game.home}</span>
+                        <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
                         <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
                           pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
                         }`}>
