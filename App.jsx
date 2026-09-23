@@ -43,6 +43,7 @@ const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
 
 export default function App() {
+  // Inicialización directa para evitar que pase por null al arrancar
   const [currentUser, setCurrentUser] = useState(() => {
     return localStorage.getItem('kiki_quiniela_user') || null;
   });
@@ -51,11 +52,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
-  const [selectedWeek, setSelectedWeek] = useState('3'); 
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
-  const [lockedWeeks, setLockedWeeks] = useState({}); 
+  const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
@@ -65,10 +65,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Bloquear gesto nativo de pull-to-refresh en móviles
   useEffect(() => {
     const preventPullToRefresh = (e) => {
       if (window.scrollY === 0 && e.touches[0].clientY > 50) {
-        // e.preventDefault();
+        // Solo bloquea si está en el tope superior absoluto
+        // e.preventDefault(); // Comentado para no bloquear el scroll normal
       }
     };
     window.addEventListener('touchmove', preventPullToRefresh, { passive: true });
@@ -79,17 +81,6 @@ export default function App() {
     fetchAllDataSilent();
   }, []);
 
-  useEffect(() => {
-    if (games.length > 0) {
-      const weeks = Array.from(new Set(games.map(g => String(g.week))));
-      if (weeks.includes('3') && selectedWeek !== '3') {
-        setSelectedWeek('3');
-      } else if (weeks.length > 0 && !weeks.includes(selectedWeek)) {
-        setSelectedWeek(weeks[weeks.length - 1]);
-      }
-    }
-  }, [games]);
-
   const fetchAllDataSilent = async () => {
     try {
       const resGames = await fetch(SCRIPT_URL);
@@ -97,7 +88,7 @@ export default function App() {
       if (Array.isArray(dataGames) && dataGames.length > 0) {
         const formattedGames = dataGames.map((item, index) => ({
           id: Number(item.ID) || index + 1,
-          week: String(item.Semana || '2'),
+          week: item.Semana || '2',
           home: item.Local,
           away: item.Visitante,
           datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
@@ -128,9 +119,7 @@ export default function App() {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
             setUserPicks(found.picks || {});
-            const isUserLocked = found.locked || false;
-            // Si la hoja ya tiene bloqueado globalmente, puedes ajustarlo por semana si lo deseas
-            setLockedWeeks(prev => ({ ...prev, [selectedWeek]: isUserLocked }));
+            setIsLockedByButton(found.locked || false);
           }
         }
       }
@@ -179,33 +168,39 @@ export default function App() {
       await syncUserToSheet(name, false, {});
     } else {
       setUserPicks(existing.picks || {});
-      setLockedWeeks(prev => ({ ...prev, [selectedWeek]: existing.locked || false }));
+      setIsLockedByButton(existing.locked || false);
       await syncUserToSheet(name, existing.locked, existing.picks);
     }
     fetchAllDataSilent();
   };
 
+  const earliestGamePerDay = games.reduce((acc, game) => {
+    const dateKey = game.datetime.split('T')[0];
+    const gameTime = new Date(game.datetime).getTime();
+    if (!acc[dateKey] || gameTime < acc[dateKey]) {
+      acc[dateKey] = gameTime;
+    }
+    return acc;
+  }, {});
+
   const isDayLocked = (gameDatetime) => {
-    return false; // Desactivado por completo
+    return false; // Desactivado por completo: ningún partido se bloquea por horario
   };
 
   const handlePick = async (gameId, team, gameDatetime) => {
-    if (lockedWeeks[selectedWeek]) return;
+    if (isLockedByButton) return;
     if (isDayLocked(gameDatetime)) return;
 
     const updatedPicks = { ...userPicks, [gameId]: team };
     setUserPicks(updatedPicks);
     setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
     
-    await syncUserToSheet(currentUser, lockedWeeks[selectedWeek] || false, updatedPicks);
+    await syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
   };
 
   const lockAndSubmitPicks = async () => {
-    const weekGameIds = games.filter(g => String(g.week) === String(selectedWeek)).map(g => g.id);
-    const hasPicksForWeek = weekGameIds.some(id => userPicks[id]);
-    if (!hasPicksForWeek) return;
-
-    setLockedWeeks(prev => ({ ...prev, [selectedWeek]: true }));
+    if (Object.keys(userPicks).length === 0) return;
+    setIsLockedByButton(true);
     setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
     
     await syncUserToSheet(currentUser, true, userPicks);
@@ -272,13 +267,9 @@ export default function App() {
     );
   }
 
-  const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => String(g.week)))).sort() : ['2', '3'];
-
   const upcomingGamesForPicks = games
-    .filter(g => String(g.week) === String(selectedWeek))
+    .filter(g => String(g.week) === '2')
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
-
-  const isCurrentWeekLocked = lockedWeeks[selectedWeek] || false;
 
   return (
     <div className="min-h-screen text-white pb-24 font-sans select-none" style={{ backgroundColor: '#002855' }}>
@@ -355,30 +346,16 @@ export default function App() {
       <main className="max-w-md mx-auto p-3 mt-1">
         {activeTab === 'picks' && (
           <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden space-y-2.5" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              
-              {/* Selector de Semanas */}
-              <div className="flex items-center justify-center gap-1.5 bg-[#002855] p-1 rounded-xl border border-white/20">
-                {availableWeeks.map(w => (
-                  <button
-                    key={w}
-                    onClick={() => setSelectedWeek(w)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition ${String(selectedWeek) === String(w) ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300 hover:text-white'}`}
-                  >
-                    Semana {w}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between">
+            <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  {isCurrentWeekLocked ? (
+                  {isLockedByButton ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
                       <Lock className="w-3 h-3" /> Picks Enviados
                     </span>
                   ) : (
                     <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                      <Unlock className="w-3 h-3" /> Semana {selectedWeek} Abierta
+                      <Unlock className="w-3 h-3" /> Semana 2 Abierta
                     </span>
                   )}
                 </div>
@@ -403,16 +380,16 @@ export default function App() {
 
             {picksViewMode === 'cards' && (
               <div className="space-y-2.5">
-                {upcomingGamesForPicks.length === 0 ? (
+                {games.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    No hay partidos programados para la Semana {selectedWeek}
+                    Actualizando
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
                     const selectedTeam = userPicks[game.id];
                     const isFinal = game.status === 'final';
                     const dayLocked = isDayLocked(game.datetime);
-                    const isLocked = isCurrentWeekLocked || dayLocked || isFinal;
+                    const isLocked = isLockedByButton || dayLocked || isFinal;
 
                     return (
                       <div key={game.id} className="border rounded-2xl p-3 shadow-md relative overflow-hidden space-y-2" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
@@ -476,14 +453,14 @@ export default function App() {
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                  <span>⚡ Vista Rápida (Semana {selectedWeek})</span>
-                  <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
+                  <span>⚡ Vista Rápida (Semana 2)</span>
+                  <span>{Object.keys(userPicks).length} / {upcomingGamesForPicks.length} elegidos</span>
                 </div>
                 {upcomingGamesForPicks.map((game) => {
                   const selectedTeam = userPicks[game.id];
                   const isFinal = game.status === 'final';
                   const dayLocked = isDayLocked(game.datetime);
-                  const isLocked = isCurrentWeekLocked || dayLocked || isFinal;
+                  const isLocked = isLockedByButton || dayLocked || isFinal;
 
                   return (
                     <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
@@ -521,7 +498,7 @@ export default function App() {
               </div>
             )}
 
-            {!isCurrentWeekLocked && games.length > 0 && (
+            {!isLockedByButton && games.length > 0 && (
               <div className="pt-2 pb-4">
                 <button
                   onClick={lockAndSubmitPicks}
@@ -561,7 +538,7 @@ export default function App() {
                           <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                         )}
                         <div>
-                          <p className="font-bold text-white text-xs">Sem. {game.week}: {game.away} vs {game.home}</p>
+                          <p className="font-bold text-white text-xs">{game.away} vs {game.home}</p>
                           <p className="text-[10px] text-slate-300">Ganador: <span className="text-amber-300 font-bold">{game.winner}</span> {game.scoreAway !== '' && `(${game.scoreAway}-${game.scoreHome})`}</p>
                         </div>
                       </div>
@@ -633,11 +610,12 @@ export default function App() {
                   const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
                   const isFinal = game.status === 'final';
                   const gotItRight = isFinal && game.winner && pick && pick === game.winner;
+                  const gotItWrong = isFinal && game.winner && (!pick || pick !== game.winner);
 
                   return (
                     <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
+                        <span className="text-slate-300 font-semibold">{game.away} vs {game.home}</span>
                         <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
                           pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
                         }`}>
