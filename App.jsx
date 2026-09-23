@@ -51,7 +51,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
-  const [selectedWeek, setSelectedWeek] = useState('3'); // Inicializada directamente en '3' para evitar saltos
+  const [selectedWeek, setSelectedWeek] = useState('3'); 
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
@@ -390,7 +390,7 @@ export default function App() {
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    No hay partidos programados para la Semana {currentActiveWeek}
+                    Actualizando partidos...
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
