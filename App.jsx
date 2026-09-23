@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Calendar, BookOpen,
-  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award, Menu
+  ChevronRight, Lock, Unlock, Clock, Grid, Check, Eye, CheckCircle2, XCircle, MinusCircle, ShieldCheck, Award, Menu, ChevronDown
 } from 'lucide-react';
 
 const TEAM_LOGOS = {
@@ -59,6 +59,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
+  const [showWeeksAccordion, setShowWeeksAccordion] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -218,7 +219,7 @@ export default function App() {
           
           <div className="w-24 h-24 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner mb-4 border border-white/20">
             <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
-          </div>
+        </div>
 
           <h1 className="text-3xl font-black tracking-tight text-white">
             Kiki Niela NFL
@@ -291,7 +292,7 @@ export default function App() {
             </button>
 
             {showConfigMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
                 <button
                   onClick={() => {
                     fetchAllDataSilent();
@@ -301,6 +302,44 @@ export default function App() {
                 >
                   🔄 Sincronizar datos
                 </button>
+
+                <div className="border-t border-white/10 my-1"></div>
+
+                {/* Acordeón de Semanas en el Menú */}
+                <div>
+                  <button
+                    onClick={() => setShowWeeksAccordion(!showWeeksAccordion)}
+                    className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-300" /> Semanas
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showWeeksAccordion ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showWeeksAccordion && (
+                    <div className="bg-[#002855]/80 px-2 py-1.5 space-y-1 max-h-48 overflow-y-auto border-y border-white/10">
+                      {availableWeeks.map(w => (
+                        <button
+                          key={w}
+                          onClick={() => {
+                            setSelectedWeek(w);
+                            setShowWeeksAccordion(false);
+                            setShowConfigMenu(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-between ${
+                            String(currentActiveWeek) === String(w)
+                              ? 'bg-[#D50A0A] text-white shadow'
+                              : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span>Semana {w}</span>
+                          {String(currentActiveWeek) === String(w) && <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded">Activa</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -343,23 +382,11 @@ export default function App() {
           <div className="space-y-3">
             <div className="border rounded-2xl p-3 text-center shadow-md relative overflow-hidden space-y-2.5" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
               
-              <div className="flex items-center justify-center gap-1.5 bg-[#002855] p-1 rounded-xl border border-white/20 overflow-x-auto">
-                {availableWeeks.map(w => (
-                  <button
-                    key={w}
-                    onClick={() => setSelectedWeek(w)}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-black transition whitespace-nowrap ${String(currentActiveWeek) === String(w) ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300 hover:text-white'}`}
-                  >
-                    Semana {w}
-                  </button>
-                ))}
-              </div>
-
               <div className="flex items-center justify-between mb-2">
                 <div>
                   {isLockedByButton ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
-                      <Lock className="w-3 h-3" /> Picks Enviados
+                      <Lock className="w-3 h-3" /> Picks Enviados ({currentActiveWeek})
                     </span>
                   ) : (
                     <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/30">
@@ -390,7 +417,7 @@ export default function App() {
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    Actualizando partidos...
+                    No hay partidos programados para la Semana {currentActiveWeek}.
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
@@ -407,8 +434,8 @@ export default function App() {
                             onClick={() => handlePick(game.id, game.away, game.datetime)}
                             className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
                               selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          >
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
                             <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                             <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
                             {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
@@ -419,105 +446,105 @@ export default function App() {
                             onClick={() => handlePick(game.id, game.home, game.datetime)}
                             className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
                               selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          >
+                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
                             <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                             <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
                             {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
                           </button>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
-                          <span className="text-slate-300 flex items-center gap-1 font-medium">
-                            <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-
-                          <button
-                            disabled={isLocked}
-                            onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                            className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
-                              selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
-                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          >
-                            <MinusCircle className="w-3 h-3" />
-                            <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
-                          </button>
-
-                          {isFinal ? (
-                            <span className="text-emerald-300 font-bold">Finalizado</span>
-                          ) : dayLocked ? (
-                            <span className="text-red-300 font-bold">Cerrado</span>
-                          ) : (
-                            <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
-                          )}
-                        </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
 
-            {picksViewMode === 'quick' && (
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
-                <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                  <span>⚡ Vista Rápida (Semana {currentActiveWeek})</span>
-                  <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
-                </div>
-                {upcomingGamesForPicks.map((game) => {
-                  const selectedTeam = userPicks[game.id];
-                  const isFinal = game.status === 'final';
-                  const dayLocked = isDayLocked(game.datetime);
-                  const isLocked = isLockedByButton || dayLocked || isFinal;
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
+                        <span className="text-slate-300 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
 
-                  return (
-                    <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-[10px] text-slate-300">
-                        <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
+                          className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
+                        } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          Empate {selectedTeam === 'Empate' && '✓'}
+                          <MinusCircle className="w-3 h-3" />
+                          <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
                         </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, game.away, game.datetime)}
-                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
-                        >
-                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
-                          <span className="truncate">{game.away}</span>
-                        </button>
-                        <button
-                          disabled={isLocked}
-                          onClick={() => handlePick(game.id, game.home, game.datetime)}
-                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
-                        >
-                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
-                          <span className="truncate">{game.home}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
-            {!isLockedByButton && games.length > 0 && (
-              <div className="pt-2 pb-4">
-                <button
-                  onClick={lockAndSubmitPicks}
-                  className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
-                  style={{ backgroundColor: '#D50A0A' }}
-                >
-                  Enviar Mis Picks 🔒
-                </button>
-              </div>
-            )}
+                        {isFinal ? (
+                          <span className="text-emerald-300 font-bold">Finalizado</span>
+                        ) : dayLocked ? (
+                          <span className="text-red-300 font-bold">Cerrado</span>
+                        ) : (
+                          <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
+                        )}
+                    </div>
+                  </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {picksViewMode === 'quick' && (
+            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
+              <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
+                <span>⚡ Vista Rápida (Semana {currentActiveWeek})</span>
+                <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
+            </div>
+            {upcomingGamesForPicks.map((game) => {
+              const selectedTeam = userPicks[game.id];
+              const isFinal = game.status === 'final';
+              const dayLocked = isDayLocked(game.datetime);
+              const isLocked = isLockedByButton || dayLocked || isFinal;
+
+              return (
+                <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
+                  <div className="flex justify-between items-center text-[10px] text-slate-300">
+                    <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    <button
+                      disabled={isLocked}
+                      onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
+                    >
+                      Empate {selectedTeam === 'Empate' && '✓'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      disabled={isLocked}
+                      onClick={() => handlePick(game.id, game.away, game.datetime)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                    >
+                      <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                      <span className="truncate">{game.away}</span>
+                    </button>
+                    <button
+                      disabled={isLocked}
+                      onClick={() => handlePick(game.id, game.home, game.datetime)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                    >
+                      <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                      <span className="truncate">{game.home}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        )}
+
+        {!isLockedByButton && games.length > 0 && (
+          <div className="pt-2 pb-4">
+            <button
+              onClick={lockAndSubmitPicks}
+              className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
+              style={{ backgroundColor: '#D50A0A' }}
+            >
+              Enviar Mis Picks 🔒
+            </button>
+          </div>
+        )}
+      </div>
         )}
 
         {activeTab === 'results' && (
@@ -531,7 +558,7 @@ export default function App() {
               {games.filter(g => g.status === 'final').length === 0 ? (
                 <div className="text-center text-slate-400 text-xs py-6">
                   Aún no hay partidos finalizados registrados en la hoja.
-                </div>
+              </div>
               ) : (
                 games.filter(g => g.status === 'final').map(game => {
                   const selectedTeam = userPicks[game.id];
@@ -555,12 +582,12 @@ export default function App() {
                           {userGotItRight ? '+1 pt' : '0 pt'}
                         </span>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+                );
+              })
+            )}
           </div>
+        </div>
         )}
 
         {activeTab === 'leaderboard' && (
@@ -599,11 +626,11 @@ export default function App() {
                         <span className="text-xl font-black text-amber-300">{user.score}</span>
                         <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
                       </div>
-                    </div>
-                  ))
-              )}
-            </div>
+                  </div>
+                ))
+            )}
           </div>
+        </div>
         )}
 
         {selectedUserForPicks && (
@@ -645,12 +672,12 @@ export default function App() {
                           <span>Partido en curso / pendiente</span>
                         </div>
                       )}
-                    </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
+        </div>
         )}
 
         {activeTab === 'rules' && (
