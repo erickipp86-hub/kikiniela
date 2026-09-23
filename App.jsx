@@ -100,7 +100,6 @@ export default function App() {
         }));
         setGames(formattedGames);
 
-        // Seleccionar automáticamente la semana más alta disponible al cargar (siempre que no se haya establecido)
         const weeks = Array.from(new Set(formattedGames.map(g => g.week)));
         if (weeks.length > 0) {
           weeks.sort((a, b) => Number(a) - Number(b));
@@ -126,7 +125,7 @@ export default function App() {
         if (savedUser) {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
-            // Combinar inteligentemente para conservar todo el historial de picks acumulados
+            // Fusión segura y estricta con lo que viene de la hoja de cálculo
             setUserPicks(prev => ({ ...(found.picks || {}), ...prev }));
             setIsLockedByButton(found.locked || false);
           }
@@ -176,9 +175,10 @@ export default function App() {
       setUsers([...users, newUser]);
       await syncUserToSheet(name, false, {});
     } else {
-      setUserPicks(prev => ({ ...(existing.picks || {}), ...prev }));
+      const mergedPicks = { ...(existing.picks || {}), ...userPicks };
+      setUserPicks(mergedPicks);
       setIsLockedByButton(existing.locked || false);
-      await syncUserToSheet(name, existing.locked, { ...(existing.picks || {}), ...userPicks });
+      await syncUserToSheet(name, existing.locked, mergedPicks);
     }
     fetchAllDataSilent();
   };
@@ -200,12 +200,16 @@ export default function App() {
     if (isLockedByButton) return;
     if (isDayLocked(gameDatetime)) return;
 
-    // Fusión acumulativa: mantiene los picks anteriores de cualquier otra semana intactos
-    const updatedPicks = { ...userPicks, [gameId]: team };
-    setUserPicks(updatedPicks);
-    setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
-    
-    await syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
+    // Acumular respetando estrictamente los picks anteriores de cualquier otra semana
+    setUserPicks(prevPicks => {
+      const updatedPicks = { ...prevPicks, [gameId]: team };
+      
+      // Actualizar estado global de usuarios y sincronizar con la hoja enviando el objeto completo fusionado
+      setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
+      syncUserToSheet(currentUser, isLockedByButton, updatedPicks);
+      
+      return updatedPicks;
+    });
   };
 
   const lockAndSubmitPicks = async () => {
@@ -553,169 +557,4 @@ export default function App() {
                   Aún no hay partidos finalizados registrados en la hoja.
                 </div>
               ) : (
-                games.filter(g => g.status === 'final').map(game => {
-                  const selectedTeam = userPicks[game.id];
-                  const userGotItRight = selectedTeam && selectedTeam === game.winner;
-
-                  return (
-                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        {userGotItRight ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-400 shrink-0" />
-                        )}
-                        <div>
-                          <p className="font-bold text-white text-xs">Sem. {game.week}: {game.away} vs {game.home}</p>
-                          <p className="text-[10px] text-slate-300">Ganador: <span className="text-amber-300 font-bold">{game.winner}</span> {game.scoreAway !== '' && `(${game.scoreAway}-${game.scoreHome})`}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${userGotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'}`}>
-                          {userGotItRight ? '+1 pt' : '0 pt'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-                <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
-              </h2>
-              <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
-            </div>
-
-            <div className="space-y-2">
-              {users.length === 0 ? (
-                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                  Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
-                </div>
-              ) : (
-                users
-                  .map(user => ({ ...user, score: calculateScore(user) }))
-                  .sort((a, b) => b.score - a.score)
-                  .map((user, index) => (
-                    <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                        </div>
-                        <div>
-                          <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
-                            {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
-                            {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
-                            <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xl font-black text-amber-300">{user.score}</span>
-                        <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {selectedUserForPicks && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
-                <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
-              </div>
-              <div className="space-y-2">
-                {games.map((game) => {
-                  const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
-                  const isFinal = game.status === 'final';
-                  const gotItRight = isFinal && game.winner && pick && pick === game.winner;
-
-                  return (
-                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
-                        <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
-                          pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
-                        }`}>
-                          {pick || 'Sin selección'}
-                        </span>
-                      </div>
-                      
-                      {isFinal ? (
-                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
-                          <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
-                          <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                            gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
-                          }`}>
-                            {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
-                            {gotItRight ? '+1 pt' : '0 pt'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
-                          <span>Partido en curso / pendiente</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'rules' && (
-          <div className="space-y-3">
-            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
-              </h2>
-              <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
-            </div>
-
-            <div className="space-y-2.5">
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>1. Selección de Pronósticos</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
-                </p>
-              </div>
-
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span>2. Cierre de Partidos</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
-                </p>
-              </div>
-
-              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                  <Award className="w-4 h-4 text-amber-400" />
-                  <span>3. Sistema de Puntuación</span>
-                </div>
-                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                  Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+                games.filter(g => g.status === 'final').map(game =>
