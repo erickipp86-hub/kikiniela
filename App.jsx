@@ -51,11 +51,11 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('picks'); 
   const [picksViewMode, setPicksViewMode] = useState('cards'); 
-  const [selectedWeek, setSelectedWeek] = useState('2');
+  const [selectedWeek, setSelectedWeek] = useState('3'); // Inicializada directamente en '3' para evitar saltos
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
-  const [isLockedByButton, setIsLockedByButton] = useState(false); // Siempre inicia desbloqueado para permitir elegir semana 3
+  const [isLockedByButton, setIsLockedByButton] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
@@ -86,12 +86,6 @@ export default function App() {
           scoreAway: item['Marcador Visitante'] || ''
         }));
         setGames(formattedGames);
-
-        const weeks = Array.from(new Set(formattedGames.map(g => g.week)));
-        if (weeks.length > 0) {
-          weeks.sort((a, b) => Number(a) - Number(b));
-          setSelectedWeek(prev => prev || weeks[weeks.length - 1]);
-        }
       }
 
       const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
@@ -113,7 +107,6 @@ export default function App() {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
             setUserPicks(prev => ({ ...(found.picks || {}), ...prev }));
-            // Mantenemos isLockedByButton en falso al cargar para permitir elegir la semana 3 libremente
             setIsLockedByButton(false);
           }
         }
@@ -164,11 +157,20 @@ export default function App() {
     } else {
       const mergedPicks = { ...(existing.picks || {}), ...userPicks };
       setUserPicks(mergedPicks);
-      setIsLockedByButton(false); // Desbloqueado para edición
+      setIsLockedByButton(false);
       await syncUserToSheet(name, false, mergedPicks);
     }
     fetchAllDataSilent();
   };
+
+  const earliestGamePerDay = games.reduce((acc, game) => {
+    const dateKey = game.datetime.split('T')[0];
+    const gameTime = new Date(game.datetime).getTime();
+    if (!acc[dateKey] || gameTime < acc[dateKey]) {
+      acc[dateKey] = gameTime;
+    }
+    return acc;
+  }, {});
 
   const isDayLocked = (gameDatetime) => {
     return false; // Desactivado por completo
@@ -257,8 +259,8 @@ export default function App() {
     );
   }
 
-  const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => g.week))).sort((a, b) => Number(a) - Number(b)) : ['2'];
-  const currentActiveWeek = selectedWeek || availableWeeks[availableWeeks.length - 1] || '2';
+  const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => g.week))).sort((a, b) => Number(a) - Number(b)) : ['2', '3'];
+  const currentActiveWeek = selectedWeek;
 
   const upcomingGamesForPicks = games
     .filter(g => String(g.week).trim() === String(currentActiveWeek).trim())
