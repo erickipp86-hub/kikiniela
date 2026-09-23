@@ -185,7 +185,6 @@ export default function App() {
 
   const isDayLocked = (gameDatetime) => {
     return false; // Desactivado por completo: ningún partido se bloquea por horario
-
   };
 
   const handlePick = async (gameId, team, gameDatetime) => {
@@ -609,10 +608,36 @@ export default function App() {
               <div className="space-y-2">
                 {games.map((game) => {
                   const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
+                  const isFinal = game.status === 'final';
+                  const gotItRight = isFinal && game.winner && pick && pick === game.winner;
+                  const gotItWrong = isFinal && game.winner && (!pick || pick !== game.winner);
+
                   return (
-                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-xs">
-                      <span className="text-slate-300 font-semibold">{game.away} vs {game.home}</span>
-                      <span className="font-black px-2.5 py-0.5 rounded-lg bg-[#D50A0A]/40 border border-[#D50A0A] text-white">{pick || 'Sin selección'}</span>
+                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300 font-semibold">{game.away} vs {game.home}</span>
+                        <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
+                          pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
+                        }`}>
+                          {pick || 'Sin selección'}
+                        </span>
+                      </div>
+                      
+                      {isFinal ? (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                          <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
+                          <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
+                          }`}>
+                            {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
+                            {gotItRight ? '+1 pt' : '0 pt'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
+                          <span>Partido en curso / pendiente</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
