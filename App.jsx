@@ -89,7 +89,7 @@ export default function App() {
       if (Array.isArray(dataGames) && dataGames.length > 0) {
         const formattedGames = dataGames.map((item, index) => ({
           id: Number(item.ID) || index + 1,
-          week: String(item.Semana || '2'),
+          week: String(item.Semana || '2').trim(),
           home: item.Local,
           away: item.Visitante,
           datetime: item['Fecha / Hora'] || '2026-09-20T13:00:00',
@@ -100,11 +100,11 @@ export default function App() {
         }));
         setGames(formattedGames);
 
-        // Seleccionar automáticamente la semana más alta disponible al cargar
+        // Seleccionar automáticamente la semana más alta disponible al cargar (siempre que no se haya establecido)
         const weeks = Array.from(new Set(formattedGames.map(g => g.week)));
         if (weeks.length > 0) {
           weeks.sort((a, b) => Number(a) - Number(b));
-          setSelectedWeek(weeks[weeks.length - 1]);
+          setSelectedWeek(prev => prev || weeks[weeks.length - 1]);
         }
       }
 
@@ -126,7 +126,8 @@ export default function App() {
         if (savedUser) {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
-            setUserPicks(found.picks || {});
+            // Combinar inteligentemente para conservar todo el historial de picks acumulados
+            setUserPicks(prev => ({ ...(found.picks || {}), ...prev }));
             setIsLockedByButton(found.locked || false);
           }
         }
@@ -175,9 +176,9 @@ export default function App() {
       setUsers([...users, newUser]);
       await syncUserToSheet(name, false, {});
     } else {
-      setUserPicks(existing.picks || {});
+      setUserPicks(prev => ({ ...(existing.picks || {}), ...prev }));
       setIsLockedByButton(existing.locked || false);
-      await syncUserToSheet(name, existing.locked, existing.picks);
+      await syncUserToSheet(name, existing.locked, { ...(existing.picks || {}), ...userPicks });
     }
     fetchAllDataSilent();
   };
@@ -199,6 +200,7 @@ export default function App() {
     if (isLockedByButton) return;
     if (isDayLocked(gameDatetime)) return;
 
+    // Fusión acumulativa: mantiene los picks anteriores de cualquier otra semana intactos
     const updatedPicks = { ...userPicks, [gameId]: team };
     setUserPicks(updatedPicks);
     setUsers(users.map(u => u.name === currentUser ? { ...u, picks: updatedPicks } : u));
@@ -275,11 +277,12 @@ export default function App() {
     );
   }
 
-  // Obtener semanas disponibles ordenadas
+  // Obtener semanas disponibles ordenadas dinámicamente
   const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => g.week))).sort((a, b) => Number(a) - Number(b)) : ['2'];
+  const currentActiveWeek = selectedWeek || availableWeeks[availableWeeks.length - 1] || '2';
 
   const upcomingGamesForPicks = games
-    .filter(g => String(g.week) === String(selectedWeek))
+    .filter(g => String(g.week).trim() === String(currentActiveWeek).trim())
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   return (
@@ -365,7 +368,7 @@ export default function App() {
                   <button
                     key={w}
                     onClick={() => setSelectedWeek(w)}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-black transition whitespace-nowrap ${String(selectedWeek) === String(w) ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300 hover:text-white'}`}
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-black transition whitespace-nowrap ${String(currentActiveWeek) === String(w) ? 'bg-[#D50A0A] text-white shadow' : 'text-slate-300 hover:text-white'}`}
                   >
                     Semana {w}
                   </button>
@@ -380,7 +383,7 @@ export default function App() {
                     </span>
                   ) : (
                     <span className="text-amber-300 font-bold text-xs flex items-center gap-1 bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                      <Unlock className="w-3 h-3" /> Semana {selectedWeek} Abierta
+                      <Unlock className="w-3 h-3" /> Semana {currentActiveWeek} Abierta
                     </span>
                   )}
                 </div>
@@ -407,7 +410,7 @@ export default function App() {
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    No hay partidos programados para la Semana {selectedWeek}
+                    No hay partidos programados para la Semana {currentActiveWeek}
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
@@ -478,7 +481,7 @@ export default function App() {
             {picksViewMode === 'quick' && (
               <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
                 <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                  <span>⚡ Vista Rápida (Semana {selectedWeek})</span>
+                  <span>⚡ Vista Rápida (Semana {currentActiveWeek})</span>
                   <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
                 </div>
                 {upcomingGamesForPicks.map((game) => {
