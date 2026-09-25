@@ -57,7 +57,9 @@ export default function App() {
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [userPicks, setUserPicks] = useState({});
-  const [isLockedByButton, setIsLockedByButton] = useState(false);
+  const [isLockedByButton, setIsLockedByButton] = useState(() => {
+    return localStorage.getItem('kiki_quiniela_locked') === 'true';
+  });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
@@ -110,7 +112,10 @@ export default function App() {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
             setUserPicks(prev => ({ ...(found.picks || {}), ...prev }));
-            setIsLockedByButton(false);
+            if (found.locked) {
+              setIsLockedByButton(true);
+              localStorage.setItem('kiki_quiniela_locked', 'true');
+            }
           }
         }
       }
@@ -156,12 +161,16 @@ export default function App() {
     if (!existing) {
       const newUser = { id: Date.now().toString(), name, locked: false, picks: {}, puntajeTotal: 0 };
       setUsers([...users, newUser]);
+      setIsLockedByButton(false);
+      localStorage.setItem('kiki_quiniela_locked', 'false');
       await syncUserToSheet(name, false, {});
     } else {
       const mergedPicks = { ...(existing.picks || {}), ...userPicks };
       setUserPicks(mergedPicks);
-      setIsLockedByButton(false);
-      await syncUserToSheet(name, false, mergedPicks);
+      const isUserLocked = existing.locked || false;
+      setIsLockedByButton(isUserLocked);
+      localStorage.setItem('kiki_quiniela_locked', isUserLocked ? 'true' : 'false');
+      await syncUserToSheet(name, isUserLocked, mergedPicks);
     }
     fetchAllDataSilent();
   };
@@ -196,6 +205,7 @@ export default function App() {
   const lockAndSubmitPicks = async () => {
     if (Object.keys(userPicks).length === 0) return;
     setIsLockedByButton(true);
+    localStorage.setItem('kiki_quiniela_locked', 'true');
     setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
     
     await syncUserToSheet(currentUser, true, userPicks);
@@ -269,8 +279,7 @@ export default function App() {
     .filter(g => String(g.week).trim() === String(currentActiveWeek).trim())
     .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
-  // Lógica para determinar si la semana visualizada ya pasó / está cerrada (si todos sus partidos son finalizados o si es menor a la actual)
-  const isCurrentWeekActive = String(currentActiveWeek) === '3'; // Asumiendo semana 3 como la actual por defecto
+  const isCurrentWeekActive = String(currentActiveWeek) === '3';
   const weekHasGames = upcomingGamesForPicks.length > 0;
   const allGamesFinalInWeek = weekHasGames && upcomingGamesForPicks.every(g => g.status === 'final');
   const isWeekClosed = !isCurrentWeekActive || allGamesFinalInWeek;
@@ -445,8 +454,8 @@ export default function App() {
                             onClick={() => handlePick(game.id, game.away, game.datetime)}
                             className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
                               selectedTeam === game.away ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
                             <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                             <span className="font-bold text-xs text-center truncate w-full">{game.away}</span>
                             {selectedTeam === game.away && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
@@ -457,116 +466,114 @@ export default function App() {
                             onClick={() => handlePick(game.id, game.home, game.datetime)}
                             className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
                               selectedTeam === game.home ? 'bg-[#D50A0A]/50 border-[#D50A0A] text-white shadow' : 'bg-[#002855]/70 border-white/10 text-slate-200'
-                          } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
                             <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-8 h-8 object-contain drop-shadow" onError={(e)=>{e.target.style.display='none'}} />
                             <span className="font-bold text-xs text-center truncate w-full">{game.home}</span>
                             {selectedTeam === game.home && <span className="text-white text-[9px] font-black px-1.5 py-0.2 rounded bg-[#D50A0A]">Pick</span>}
                           </button>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
+                          <span className="text-slate-300 flex items-center gap-1 font-medium">
+                            <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+
+                          <button
+                            disabled={isLocked}
+                            onClick={() => handlePick(game.id, 'Empate', game.datetime)}
+                            className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                              selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
+                            } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            <MinusCircle className="w-3 h-3" />
+                            <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
+                          </button>
+
+                          {isFinal ? (
+                            <span className="text-emerald-300 font-bold">Finalizado</span>
+                          ) : dayLocked ? (
+                            <span className="text-red-300 font-bold">Cerrado</span>
+                          ) : (
+                            <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
+                          )}
+                        </div>
                       </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
 
-                      <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[11px]">
-                        <span className="text-slate-300 flex items-center gap-1 font-medium">
-                          <Clock className="w-3 h-3 text-amber-400" /> {new Date(game.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+            {picksViewMode === 'quick' && (
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
+                <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
+                  <span>⚡ Vista Rápida (Semana {currentActiveWeek})</span>
+                  <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
+                </div>
+                {upcomingGamesForPicks.map((game) => {
+                  const selectedTeam = userPicks[game.id];
+                  const isFinal = game.status === 'final';
+                  const dayLocked = isDayLocked(game.datetime);
+                  const isLocked = isLockedByButton || dayLocked || isFinal || isWeekClosed;
 
+                  return (
+                    <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-slate-300">
+                        <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                         <button
                           disabled={isLocked}
                           onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                          className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
-                            selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white shadow' : 'bg-[#002855] border-white/10 text-amber-300 hover:bg-[#002855]/80'
-                        } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
                         >
-                          <MinusCircle className="w-3 h-3" />
-                          <span>Empate {selectedTeam === 'Empate' && '✓'}</span>
+                          Empate {selectedTeam === 'Empate' && '✓'}
                         </button>
-
-                        {isFinal ? (
-                          <span className="text-emerald-300 font-bold">Finalizado</span>
-                        ) : dayLocked ? (
-                          <span className="text-red-300 font-bold">Cerrado</span>
-                        ) : (
-                          <span className="text-amber-300 font-bold flex items-center gap-0.5"><Unlock className="w-3 h-3" /> Abierto</span>
-                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.away, game.datetime)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                        >
+                          <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.away}</span>
+                        </button>
+                        <button
+                          disabled={isLocked}
+                          onClick={() => handlePick(game.id, game.home, game.datetime)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
+                        >
+                          <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
+                          <span className="truncate">{game.home}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
                   );
-                })
-              )}
-            </div>
-          )}
-
-          {picksViewMode === 'quick' && (
-            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3 shadow-md space-y-2">
-              <div className="text-xs font-bold text-amber-300 mb-2 px-1 flex items-center justify-between">
-                <span>⚡ Vista Rápida (Semana {currentActiveWeek})</span>
-                <span>{upcomingGamesForPicks.filter(g => userPicks[g.id]).length} / {upcomingGamesForPicks.length} elegidos</span>
-            </div>
-            {upcomingGamesForPicks.map((game) => {
-              const selectedTeam = userPicks[game.id];
-              const isFinal = game.status === 'final';
-              const dayLocked = isDayLocked(game.datetime);
-              const isLocked = isLockedByButton || dayLocked || isFinal || isWeekClosed;
-
-              return (
-                <div key={game.id} className="bg-[#002855] p-2.5 rounded-xl border border-white/10 space-y-2">
-                  <div className="flex justify-between items-center text-[10px] text-slate-300">
-                    <span className="font-semibold">{new Date(game.datetime).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                    <button
-                      disabled={isLocked}
-                      onClick={() => handlePick(game.id, 'Empate', game.datetime)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${selectedTeam === 'Empate' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-[#001b3a] border-white/10 text-amber-300'}`}
-                    >
-                      Empate {selectedTeam === 'Empate' && '✓'}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      disabled={isLocked}
-                      onClick={() => handlePick(game.id, game.away, game.datetime)}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.away ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
-                    >
-                      <img src={TEAM_LOGOS[game.away]} alt={game.away} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
-                      <span className="truncate">{game.away}</span>
-                    </button>
-                    <button
-                      disabled={isLocked}
-                      onClick={() => handlePick(game.id, game.home, game.datetime)}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 truncate ${selectedTeam === game.home ? 'bg-[#D50A0A] text-white ring-1 ring-white' : 'bg-[#001b3a] text-slate-300'}`}
-                    >
-                      <img src={TEAM_LOGOS[game.home]} alt={game.home} className="w-4 h-4 object-contain" onError={(e)=>{e.target.style.display='none'}} />
-                      <span className="truncate">{game.home}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          )}
-
-          {/* El botón de enviar picks solo aparece si es la semana en curso y no se ha enviado */}
-          {!isWeekClosed && games.length > 0 && (
-            <div className="pt-2 pb-4">
-              <button
-                onClick={lockAndSubmitPicks}
-                disabled={isLockedByButton}
-                className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
-                style={{ backgroundColor: isLockedByButton ? '#1e3a5f' : '#D50A0A' }}
-              >
-                {isLockedByButton ? 'Picks Enviados 🔒' : 'Enviar Mis Picks 🔒'}
-              </button>
-            </div>
-          )}
-
-          {/* Para semanas anteriores o cerradas, muestra un aviso fijo de picks enviados/cerrado */}
-          {isWeekClosed && (
-            <div className="pt-2 pb-4">
-              <div className="w-full text-slate-300 font-bold py-3 rounded-2xl text-xs shadow-xl flex items-center justify-center gap-2 border border-white/10 bg-[#001b3a] text-center">
-                🔒 Semana Cerrada / Picks Registrados
+                })}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {!isWeekClosed && games.length > 0 && (
+              <div className="pt-2 pb-4">
+                <button
+                  onClick={lockAndSubmitPicks}
+                  disabled={isLockedByButton}
+                  className="w-full text-white font-black py-3 rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2 border border-white/20"
+                  style={{ backgroundColor: isLockedByButton ? '#1e3a5f' : '#D50A0A' }}
+                >
+                  {isLockedByButton ? 'Picks Enviados 🔒' : 'Enviar Mis Picks 🔒'}
+                </button>
+              </div>
+            )}
+
+            {isWeekClosed && (
+              <div className="pt-2 pb-4">
+                <div className="w-full text-slate-300 font-bold py-3 rounded-2xl text-xs shadow-xl flex items-center justify-center gap-2 border border-white/10 bg-[#001b3a] text-center">
+                  🔒 Semana Cerrada / Picks Registrados
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'results' && (
@@ -580,7 +587,7 @@ export default function App() {
               {games.filter(g => g.status === 'final').length === 0 ? (
                 <div className="text-center text-slate-400 text-xs py-6">
                   Aún no hay partidos finalizados registrados en la hoja.
-              </div>
+                </div>
               ) : (
                 games.filter(g => g.status === 'final').map(game => {
                   const selectedTeam = userPicks[game.id];
@@ -604,147 +611,147 @@ export default function App() {
                           {userGotItRight ? '+1 pt' : '0 pt'}
                         </span>
                       </div>
-                  </div>
-                );
-              })
-            )}
-        </div>
-      </div>
-      )}
-
-      {activeTab === 'leaderboard' && (
-        <div className="space-y-3">
-          <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-            <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
-            </h2>
-            <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
+        )}
 
-          <div className="space-y-2">
-            {users.length === 0 ? (
-              <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
-                Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
+        {activeTab === 'leaderboard' && (
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+                <Trophy className="w-4 h-4 text-amber-400" /> Tabla de Posiciones Global
+              </h2>
+              <p className="text-[11px] text-slate-300">Toca un nombre para ver sus picks.</p>
             </div>
-            ) : (
-              users
-                .map(user => ({ ...user, score: calculateScore(user) }))
-                .sort((a, b) => b.score - a.score)
-                .map((user, index) => (
-                  <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                      </div>
-                      <div>
-                        <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
-                          {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
-                          {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
-                          <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xl font-black text-amber-300">{user.score}</span>
-                      <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
-                    </div>
-                </div>
-              ))
-          )}
-        </div>
-      </div>
-      )}
 
-      {selectedUserForPicks && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-            <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-              <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
-              <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
-            </div>
             <div className="space-y-2">
-              {games.map((game) => {
-                const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
-                const isFinal = game.status === 'final';
-                const gotItRight = isFinal && game.winner && pick && pick === game.winner;
-
-                return (
-                  <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
-                      <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
-                        pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
-                      }`}>
-                        {pick || 'Sin selección'}
-                      </span>
+              {users.length === 0 ? (
+                <div className="border rounded-2xl p-6 text-center text-slate-400 text-xs" style={{ backgroundColor: '#001b3a', borderColor: '#003369' }}>
+                  Aún no hay participantes registrados en Google Sheets. ¡Comparte tu link!
+                </div>
+              ) : (
+                users
+                  .map(user => ({ ...user, score: calculateScore(user) }))
+                  .sort((a, b) => b.score - a.score)
+                  .map((user, index) => (
+                    <div key={user.id} className="border rounded-xl p-3 flex items-center justify-between shadow-md" style={{ backgroundColor: '#001b3a', borderColor: index === 0 ? '#F59E0B' : 'rgba(255,255,255,0.1)' }}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs bg-[#002855] text-amber-300 shadow">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                        </div>
+                        <div>
+                          <button onClick={() => setSelectedUserForPicks(user)} className="font-bold text-sm text-white flex items-center gap-1 hover:text-amber-300 transition text-left">
+                            {user.name} {user.name === currentUser && <span className="text-[9px] text-white px-1.5 py-0.2 rounded font-black bg-[#D50A0A]">Tú</span>}
+                            {user.locked && <span className="text-emerald-400 text-xs">🔒</span>}
+                            <Eye className="w-3 h-3 text-amber-300 ml-0.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-black text-amber-300">{user.score}</span>
+                        <p className="text-[9px] uppercase font-bold text-slate-400">Pts</p>
+                      </div>
                     </div>
-                     
-                    {isFinal ? (
-                      <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
-                        <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
-                        <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                          gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
+                  ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {selectedUserForPicks && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="border-2 rounded-3xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl relative" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                <h3 className="font-black text-base text-white">Picks de: <span className="text-amber-300">{selectedUserForPicks.name}</span></h3>
+                <button onClick={() => setSelectedUserForPicks(null)} className="bg-white/10 text-white px-2.5 py-1 rounded-xl text-xs">✕</button>
+              </div>
+              <div className="space-y-2">
+                {games.map((game) => {
+                  const pick = selectedUserForPicks.picks ? selectedUserForPicks.picks[game.id] : null;
+                  const isFinal = game.status === 'final';
+                  const gotItRight = isFinal && game.winner && pick && pick === game.winner;
+
+                  return (
+                    <div key={game.id} className="bg-[#002855] border border-white/10 rounded-xl p-2.5 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300 font-semibold">Sem. {game.week}: {game.away} vs {game.home}</span>
+                        <span className={`font-black px-2 py-0.5 rounded-lg text-[10px] border ${
+                          pick ? 'bg-[#D50A0A]/40 border-[#D50A0A] text-white' : 'bg-slate-800 border-slate-700 text-slate-400'
                         }`}>
-                          {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
-                          {gotItRight ? '+1 pt' : '0 pt'}
+                          {pick || 'Sin selección'}
                         </span>
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
-                        <span>Partido en curso / pendiente</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                       
+                      {isFinal ? (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                          <span className="text-slate-400">Ganador: <strong className="text-amber-300">{game.winner}</strong></span>
+                          <span className={`font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            gotItRight ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-red-950 text-red-300 border border-red-500/40'
+                          }`}>
+                            {gotItRight ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
+                            {gotItRight ? '+1 pt' : '0 pt'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-amber-300/80">
+                          <span>Partido en curso / pendiente</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'rules' && (
-        <div className="space-y-3">
-          <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
-            <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
-            </h2>
-            <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+        {activeTab === 'rules' && (
+          <div className="space-y-3">
+            <div className="border rounded-2xl p-3 text-center shadow-md" style={{ backgroundColor: '#001b3a', borderColor: '#D50A0A' }}>
+              <h2 className="font-black text-amber-300 text-sm mb-0.5 flex items-center justify-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-amber-400" /> Reglas de la Quiniela
+              </h2>
+              <p className="text-[11px] text-slate-300">Todo lo que necesitas saber para ganar.</p>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>1. Selección de Pronósticos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span>2. Cierre de Partidos</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
+                </p>
+              </div>
+
+              <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <span>3. Sistema de Puntuación</span>
+                </div>
+                <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
+                  Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
+                </p>
+              </div>
+            </div>
           </div>
-
-          <div className="space-y-2.5">
-            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>1. Selección de Pronósticos</span>
-              </div>
-              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                Toca tu equipo favorito o selecciona la opción de Empate ubicada en la parte inferior de cada tarjeta de partido. Tus cambios se guardan automáticamente en Google Sheets.
-              </p>
-            </div>
-
-            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <span>2. Cierre de Partidos</span>
-              </div>
-              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                Cada bloque de partidos se cierra automáticamente 12 horas antes del inicio del primer encuentro de ese día. Asegúrate de enviar tus picks a tiempo.
-              </p>
-            </div>
-
-            <div className="bg-[#001b3a] border border-white/10 rounded-2xl p-3.5 shadow-md space-y-1">
-              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                <Award className="w-4 h-4 text-amber-400" />
-                <span>3. Sistema de Puntuación</span>
-              </div>
-              <p className="text-[11px] text-slate-300 pl-6 leading-relaxed">
-                Obtienes <strong className="text-white">+1 punto</strong> por cada acierto oficial al finalizar los encuentros de la semana. Compite en tiempo real en la tabla de posiciones global.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
-  </div>
-);
+        )}
+      </main>
+    </div>
+  );
 }
