@@ -64,6 +64,7 @@ export default function App() {
   const [selectedUserForPicks, setSelectedUserForPicks] = useState(null);
   const [showConfigMenu, setShowConfigMenu] = useState(false);
   const [showWeeksAccordion, setShowWeeksAccordion] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -71,8 +72,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchAllDataSilent();
+    fetchAllDataInitial();
   }, []);
+
+  const fetchAllDataInitial = async () => {
+    try {
+      await fetchAllDataSilent();
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
 
   const fetchAllDataSilent = async () => {
     try {
@@ -222,6 +231,19 @@ export default function App() {
     }
     return score;
   };
+
+  if (isLoadingInitial) {
+    return (
+      <div className="min-h-screen text-white flex flex-col justify-center items-center p-4 select-none" style={{ backgroundColor: '#002855' }}>
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl mx-auto flex items-center justify-center p-3 shadow-inner border border-white/20 animate-pulse">
+            <img src={NFL_SHIELD_URL} alt="NFL Shield" className="w-full h-full object-contain drop-shadow" />
+          </div>
+          <p className="text-xs font-bold text-amber-300 tracking-wider uppercase">Cargando partidos...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -437,7 +459,7 @@ export default function App() {
               <div className="space-y-2.5">
                 {upcomingGamesForPicks.length === 0 ? (
                   <div className="text-center text-slate-400 text-xs py-10 bg-[#001b3a] rounded-2xl border border-white/10">
-                    Cargando partidos...
+                    No hay partidos disponibles.
                   </div>
                 ) : (
                   upcomingGamesForPicks.map((game) => {
