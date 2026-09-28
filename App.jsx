@@ -1,4 +1,4 @@
-//V4.0 final
+//V4.1 final
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -44,9 +44,28 @@ const TEAM_LOGOS = {
 const NFL_SHIELD_URL = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWS-DseQZSxhYSzs_as6_YQUO5XbI-C0st5hNDHUEnkg3A8Qeup0pvZUEkPu8rD78bZA/exec';
 
-const getLatestWeek = (gamesList) => {
-  const weeks = gamesList.map(g => Number(g.week)).filter(n => !isNaN(n));
-  return weeks.length > 0 ? String(Math.max(...weeks)) : null;
+// Cada semana abre el lunes a las 6:00 AM (hora Ciudad de México, UTC-6) antes de su primer partido
+const getWeekOpenTime = (weekGames) => {
+  const times = weekGames.map(g => new Date(g.datetime).getTime()).filter(t => !isNaN(t));
+  if (times.length === 0) return null;
+  const MX_OFFSET = 6 * 60 * 60 * 1000;
+  const mx = new Date(Math.min(...times) - MX_OFFSET);
+  const daysBack = (mx.getUTCDay() + 6) % 7;
+  return Date.UTC(mx.getUTCFullYear(), mx.getUTCMonth(), mx.getUTCDate() - daysBack, 6, 0, 0) + MX_OFFSET;
+};
+
+// Semana en curso: la última cuya apertura (lunes 6 AM) ya pasó
+const getCurrentWeek = (gamesList, now = Date.now()) => {
+  const weeks = Array.from(new Set(gamesList.map(g => g.week)))
+    .filter(w => !isNaN(Number(w)))
+    .sort((a, b) => Number(a) - Number(b));
+  if (weeks.length === 0) return null;
+  let current = weeks[0];
+  weeks.forEach(w => {
+    const openTime = getWeekOpenTime(gamesList.filter(g => g.week === w));
+    if (openTime !== null && openTime <= now) current = w;
+  });
+  return current;
 };
 
 export default function App() {
@@ -80,6 +99,30 @@ export default function App() {
     fetchAllDataInitial();
   }, []);
 
+  const currentWeekNow = getCurrentWeek(games, currentTime.getTime());
+  const [showWeekNotice, setShowWeekNotice] = useState(false);
+
+  // Si la semana cambia con la app abierta, se desbloquea el "Enviar" de la semana anterior
+  useEffect(() => {
+    if (!currentWeekNow || !currentUser) return;
+    if (localStorage.getItem('kiki_quiniela_locked') === 'true' && localStorage.getItem('kiki_quiniela_locked_week') !== currentWeekNow) {
+      setIsLockedByButton(false);
+      localStorage.setItem('kiki_quiniela_locked', 'false');
+    }
+  }, [currentWeekNow, currentUser]);
+
+  // Aviso de semana abierta: una sola vez por semana, y no si ya envió esa semana
+  useEffect(() => {
+    if (!currentWeekNow || !currentUser) return;
+    if (localStorage.getItem('kiki_quiniela_notice_week') === currentWeekNow) return;
+    localStorage.setItem('kiki_quiniela_notice_week', currentWeekNow);
+    const sentThisWeek = localStorage.getItem('kiki_quiniela_locked') === 'true' && localStorage.getItem('kiki_quiniela_locked_week') === currentWeekNow;
+    if (sentThisWeek) return;
+    setShowWeekNotice(true);
+    const timer = setTimeout(() => setShowWeekNotice(false), 4000);
+    return () => clearTimeout(timer);
+  }, [currentWeekNow, currentUser]);
+
   const fetchAllDataInitial = async () => {
     try {
       await fetchAllDataSilent();
@@ -91,8 +134,11 @@ export default function App() {
   const fetchAllDataSilent = async () => {
     try {
       let latestWeekFromSheet = null;
-      const resGames = await fetch(SCRIPT_URL);
-      const dataGames = await resGames.json();
+      const [resGames, resUsers] = await Promise.all([
+        fetch(SCRIPT_URL),
+        fetch(`${SCRIPT_URL}?action=getUsers`)
+      ]);
+      const [dataGames, dataUsers] = await Promise.all([resGames.json(), resUsers.json()]);
       if (Array.isArray(dataGames) && dataGames.length > 0) {
         const formattedGames = dataGames.map((item, index) => ({
           id: Number(item.ID) || index + 1,
@@ -106,11 +152,9 @@ export default function App() {
           scoreAway: item['Marcador Visitante'] || ''
         }));
         setGames(formattedGames);
-        latestWeekFromSheet = getLatestWeek(formattedGames);
+        latestWeekFromSheet = getCurrentWeek(formattedGames);
       }
 
-      const resUsers = await fetch(`${SCRIPT_URL}?action=getUsers`);
-      const dataUsers = await resUsers.json();
       if (Array.isArray(dataUsers)) {
         const formattedUsers = dataUsers
           .filter(u => (u.Nombre || u.name))
@@ -188,7 +232,7 @@ export default function App() {
     } else {
       const mergedPicks = { ...(existing.picks || {}), ...userPicks };
       setUserPicks(mergedPicks);
-      const latestWeekNow = getLatestWeek(games);
+      const latestWeekNow = getCurrentWeek(games);
       const isOldLock = latestWeekNow && localStorage.getItem('kiki_quiniela_locked_week') !== latestWeekNow;
       const isUserLocked = (existing.locked && !isOldLock) || false;
       setIsLockedByButton(isUserLocked);
@@ -229,7 +273,7 @@ export default function App() {
     if (Object.keys(userPicks).length === 0) return;
     setIsLockedByButton(true);
     localStorage.setItem('kiki_quiniela_locked', 'true');
-    const latestWeekNow = getLatestWeek(games);
+    const latestWeekNow = getCurrentWeek(games);
     if (latestWeekNow) localStorage.setItem('kiki_quiniela_locked_week', latestWeekNow);
     setUsers(users.map(u => u.name === currentUser ? { ...u, locked: true, picks: userPicks } : u));
 
@@ -311,8 +355,9 @@ export default function App() {
   }
 
   const availableWeeks = games.length > 0 ? Array.from(new Set(games.map(g => g.week))).sort((a, b) => Number(a) - Number(b)) : ['2', '3'];
-  const latestWeek = getLatestWeek(games) || '3';
+  const latestWeek = currentWeekNow || '3';
   const currentActiveWeek = selectedWeek || latestWeek;
+  const isFutureWeek = Number(currentActiveWeek) > Number(latestWeek);
 
   const upcomingGamesForPicks = games
     .filter(g => String(g.week).trim() === String(currentActiveWeek).trim())
@@ -349,14 +394,20 @@ export default function App() {
 
             {showConfigMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-[#001b3a] border border-white/20 rounded-2xl shadow-2xl py-2 z-50">
+                <div className="px-4 py-2.5 text-xs font-bold">
+                  <p className="text-slate-400">Usuario</p>
+                  <p className="text-amber-300 mt-0.5">{currentUser}</p>
+                </div>
+
+                <div className="border-t border-white/10 my-1"></div>
+
                 <button
                   onClick={() => {
-                    fetchAllDataSilent();
-                    setShowConfigMenu(false);
+                    window.location.reload();
                   }}
                   className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold"
                 >
-                  🔄 Sincronizar datos
+                  🔄 Actualizar
                 </button>
 
                 <div className="border-t border-white/10 my-1"></div>
@@ -432,6 +483,14 @@ export default function App() {
         </div>
       </header>
 
+      {showWeekNotice && (
+        <div onClick={() => setShowWeekNotice(false)} className="max-w-md mx-auto px-3 mt-2">
+          <div className="bg-[#001b3a] border border-amber-500/30 text-amber-300 text-[11px] font-bold rounded-xl py-1.5 px-3 text-center shadow cursor-pointer">
+            Semana {latestWeek} abierta · ¡Ya puedes hacer tus picks!
+          </div>
+        </div>
+      )}
+
       <main className="max-w-md mx-auto p-3 mt-1">
         {activeTab === 'picks' && (
           <div className="space-y-3">
@@ -439,7 +498,11 @@ export default function App() {
 
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  {isWeekClosed ? (
+                  {isFutureWeek ? (
+                    <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
+                      <Lock className="w-3 h-3" /> Semana {currentActiveWeek} Próximamente
+                    </span>
+                  ) : isWeekClosed ? (
                     <span className="text-red-400 font-bold text-xs flex items-center gap-1 bg-red-950/50 px-2.5 py-0.5 rounded-full border border-red-500/30">
                       <Lock className="w-3 h-3" /> Semana {currentActiveWeek} Cerrada
                     </span>
@@ -608,7 +671,7 @@ export default function App() {
             {isWeekClosed && (
               <div className="pt-2 pb-4">
                 <div className="w-full text-slate-300 font-bold py-3 rounded-2xl text-xs shadow-xl flex items-center justify-center gap-2 border border-white/10 bg-[#001b3a] text-center">
-                  🔒 Semana Cerrada / Picks Registrados
+                  {isFutureWeek ? '🔒 Semana Próximamente' : '🔒 Semana Cerrada / Picks Registrados'}
                 </div>
               </div>
             )}
