@@ -1,4 +1,4 @@
-//V4.1 final
+//V4.2 final
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -68,6 +68,12 @@ const getCurrentWeek = (gamesList, now = Date.now()) => {
   return current;
 };
 
+// Última semana que ya tiene partidos finalizados (para candados enviados sin semana registrada)
+const getLastPlayedWeek = (gamesList) => {
+  const weeks = gamesList.filter(g => g.status === 'final').map(g => Number(g.week)).filter(n => !isNaN(n));
+  return weeks.length > 0 ? String(Math.max(...weeks)) : null;
+};
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     return localStorage.getItem('kiki_quiniela_user') || null;
@@ -105,7 +111,8 @@ export default function App() {
   // Si la semana cambia con la app abierta, se desbloquea el "Enviar" de la semana anterior
   useEffect(() => {
     if (!currentWeekNow || !currentUser) return;
-    if (localStorage.getItem('kiki_quiniela_locked') === 'true' && localStorage.getItem('kiki_quiniela_locked_week') !== currentWeekNow) {
+    const lockedWeek = localStorage.getItem('kiki_quiniela_locked_week');
+    if (localStorage.getItem('kiki_quiniela_locked') === 'true' && lockedWeek && lockedWeek !== currentWeekNow) {
       setIsLockedByButton(false);
       localStorage.setItem('kiki_quiniela_locked', 'false');
     }
@@ -134,6 +141,7 @@ export default function App() {
   const fetchAllDataSilent = async () => {
     try {
       let latestWeekFromSheet = null;
+      let lastPlayedWeekFromSheet = null;
       const [resGames, resUsers] = await Promise.all([
         fetch(SCRIPT_URL),
         fetch(`${SCRIPT_URL}?action=getUsers`)
@@ -153,6 +161,7 @@ export default function App() {
         }));
         setGames(formattedGames);
         latestWeekFromSheet = getCurrentWeek(formattedGames);
+        lastPlayedWeekFromSheet = getLastPlayedWeek(formattedGames);
       }
 
       if (Array.isArray(dataUsers)) {
@@ -172,6 +181,10 @@ export default function App() {
           const found = formattedUsers.find(u => u.name.toLowerCase() === savedUser.toLowerCase());
           if (found) {
             setUserPicks(prev => ({ ...(found.picks || {}), ...prev }));
+            if (found.locked && !localStorage.getItem('kiki_quiniela_locked_week')) {
+              const legacyWeek = lastPlayedWeekFromSheet || latestWeekFromSheet;
+              if (legacyWeek) localStorage.setItem('kiki_quiniela_locked_week', legacyWeek);
+            }
             const isOldLock = latestWeekFromSheet && localStorage.getItem('kiki_quiniela_locked_week') !== latestWeekFromSheet;
             if (found.locked && !isOldLock) {
               setIsLockedByButton(true);
@@ -232,6 +245,10 @@ export default function App() {
     } else {
       const mergedPicks = { ...(existing.picks || {}), ...userPicks };
       setUserPicks(mergedPicks);
+      if (existing.locked && !localStorage.getItem('kiki_quiniela_locked_week')) {
+        const legacyWeek = getLastPlayedWeek(games) || getCurrentWeek(games);
+        if (legacyWeek) localStorage.setItem('kiki_quiniela_locked_week', legacyWeek);
+      }
       const latestWeekNow = getCurrentWeek(games);
       const isOldLock = latestWeekNow && localStorage.getItem('kiki_quiniela_locked_week') !== latestWeekNow;
       const isUserLocked = (existing.locked && !isOldLock) || false;
