@@ -1,4 +1,4 @@
-//V4.2 final
+//V4.3 final
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -420,7 +420,7 @@ export default function App() {
 
                 <button
                   onClick={() => {
-                    window.location.reload();
+                    window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
                   }}
                   className="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-white/10 transition font-bold"
                 >
